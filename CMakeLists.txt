@@ -6,3 +6,15 @@ find_package(ZLIB REQUIRED)
 file(GLOB sources CONFIGURE_DEPENDS src/greeter/*.cpp)
 add_executable(Greeter_exe ${sources})
 target_link_libraries(Greeter_exe ZLIB::ZLIB)
+
+# Testing
+find_package(doctest REQUIRED)
+include(doctest)
+
+file(GLOB sources CONFIGURE_DEPENDS "./test/*.cpp")
+add_executable(Greeter_tests ${sources})
+target_link_libraries(Greeter_tests doctest::doctest)
+
+doctest_discover_tests(Greeter_tests)
+enable_testing()
+add_test(NAME Greeter_tests COMMAND Greeter_tests)

@@ -1,0 +1,55 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+    - master
+
+jobs:
+  sanitize:
+    runs-on: ubuntu-22.04
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Conan cache
+      uses: actions/cache@v4
+      with:
+        path: conan_cache_save.tgz
+        key: conan-coverage-${{ hashFiles('conan*.[pl][yo]*') }}
+
+    - name: Install dependencies
+      run: bash < .github/scripts/conan-ci-setup.sh
+
+    - name: Configure
+      env:
+        VERBOSE: "1"
+      run: >-
+           cmake -B build/sanitize
+           -DCMAKE_TOOLCHAIN_FILE=conan/conan_toolchain.cmake
+           -DCMAKE_BUILD_TYPE=Release
+           -DGreeter_DEV=ON
+           -DUSE_SANITIZER=Address,Undefined
+           -DUSE_CCACHE=ON
+    - name: Build
+      env:
+        VERBOSE: "1"
+      run: |
+           cmake --build build/sanitize -j 2
+
+    - name: Test
+      working-directory: build/sanitize
+      env:
+        ASAN_OPTIONS: "strict_string_checks=1:\
+          detect_stack_use_after_return=1:\
+          check_initialization_order=1:\
+          strict_init_order=1:\
+          detect_leaks=1:\
+          halt_on_error=1"
+        UBSAN_OPTIONS: "print_stacktrace=1:\
+          halt_on_error=1"
+      run: ctest --output-on-failure --no-tests=error -j 2
