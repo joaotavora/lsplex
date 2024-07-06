@@ -18,8 +18,6 @@ PS4='\033[1;34m>>>\033[0m '
 
 set -xeu
 
-pip3 install conan
-
 conan profile detect -f
 
 std=17
