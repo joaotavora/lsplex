@@ -41,14 +41,14 @@ jobs:
         VERBOSE: "1"
       run: |
            ctest --output-on-failure --no-tests=error -j 2
-           # ./Greeter
-           # ./Greeter -l martian || true
-           # ./Greeter -l en
-           # ./Greeter -l de
-           # ./Greeter -l es
-           # ./Greeter -l fr
-           # ./Greeter --help
-           # ./Greeter --version
+           ./Greeter
+           ./Greeter -l martian || true
+           ./Greeter -l en
+           ./Greeter -l de
+           ./Greeter -l es
+           ./Greeter -l fr
+           ./Greeter --help
+           ./Greeter --version
 
     - name: Process coverage info
       run: >-
