@@ -19,6 +19,10 @@ jobs:
         cache-dependency-path: .github/etc/requirements.txt
     - run: pip install -r .github/etc/requirements.txt
 
+    - uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: ccache cmake
+
     - uses: hendrikmuhs/ccache-action@v1.2
 
     - name: Conan cache
