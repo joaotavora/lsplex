@@ -50,10 +50,15 @@ jobs:
            ./Greeter --help
            ./Greeter --version
 
-    - name: Collect code coverage
+    - name: Process coverage info
       run: >-
-           bash <(curl -s https://codecov.io/bash)
-           || echo "Codecov did not collect coverage reports"
+           lcov -c -o build/coverage/coverage.info -d build/coverage --include "*"
+
+    - name: Submit to codecov.io
+      uses: codecov/codecov-action@v4
+      with:
+        file: build/coverage/coverage.info
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   sanitize:
     runs-on: ubuntu-22.04
