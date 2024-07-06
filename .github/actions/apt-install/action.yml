@@ -1,0 +1,17 @@
+name: Install apt dependencies and cache them
+
+runs:
+  using: composite
+  steps:
+  - uses: awalsh128/cache-apt-pkgs-action@latest
+    with:
+      packages: ccache cmake lcov clang-tidy-14 cppcheck
+
+  - name: use the right alternatives
+    shell: bash
+    run: >-
+        sudo update-alternatives --install
+        /usr/bin/clang-tidy clang-tidy
+        /usr/bin/clang-tidy-14 140
+
+

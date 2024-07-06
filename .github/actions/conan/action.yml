@@ -1,0 +1,23 @@
+name: Conan installation and deps
+
+runs:
+  using: composite
+  steps:
+  - uses: actions/setup-python@v5
+    with:
+      python-version: '3.12'
+      cache: 'pip'
+      cache-dependency-path: .github/etc/requirements.txt
+
+  - shell: bash
+    run: pip install -r .github/etc/requirements.txt
+
+  - name: Conan cache
+    uses: actions/cache@v4
+    with:
+      path: conan_cache_save.tgz
+      key: conan-${{ github.runner_name }}-${{ hashFiles('conan*.[pl][yo]*') }}
+
+  - name: Install dependencies
+    shell: bash
+    run: bash < .github/scripts/conan-ci-setup.sh
