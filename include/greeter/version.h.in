@@ -1,0 +1,10 @@
+#pragma once
+
+// clang-format off
+#define GREETER_VERSION_MAJOR @Greeter_VERSION_MAJOR@
+#define GREETER_VERSION_MINOR @Greeter_VERSION_MINOR@
+#define GREETER_VERSION_PATCH @Greeter_VERSION_PATCH@
+#define GREETER_VERSION_TWEAK @Greeter_VERSION_TWEAK@
+
+#define GREETER_VERSION "@Greeter_VERSION@"
+// clang-format on

@@ -16,6 +16,8 @@ jobs:
       with:
         python-version: '3.12'
 
+    - uses: hendrikmuhs/ccache-action@v1.2
+
     - name: Conan cache
       uses: actions/cache@v4
       with:
@@ -35,6 +37,7 @@ jobs:
            -DGreeter_DEV=ON
            -DUSE_SANITIZER=Address,Undefined
            -DUSE_CCACHE=ON
+
     - name: Build
       env:
         VERBOSE: "1"

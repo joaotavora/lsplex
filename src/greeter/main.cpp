@@ -1,32 +1,53 @@
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
+#include <greeter/greeter.h>
+#include <greeter/version.h>
 
-#include <zlib.h>
+#include <cxxopts.hpp>
+#include <iostream>
+#include <string>
+#include <unordered_map>
 
-int main() {
-    char buffer_in [256] = {"Conan is a MIT-licensed, Open Source package manager for C and C++ development "
-                            "for C and C++ development, allowing development teams to easily and efficiently "
-                            "manage their packages and dependencies across platforms and build systems."};
-    char buffer_out [256] = {0};
+auto main(int argc, char** argv) -> int {
+  const std::unordered_map<std::string, greeter::LanguageCode> languages{
+      {"en", greeter::LanguageCode::EN},
+      {"de", greeter::LanguageCode::DE},
+      {"es", greeter::LanguageCode::ES},
+      {"fr", greeter::LanguageCode::FR},
+  };
 
-    z_stream defstream;
-    defstream.zalloc = Z_NULL;
-    defstream.zfree = Z_NULL;
-    defstream.opaque = Z_NULL;
-    defstream.avail_in = (uInt) strlen(buffer_in);
-    defstream.next_in = (Bytef *) buffer_in;
-    defstream.avail_out = (uInt) sizeof(buffer_out);
-    defstream.next_out = (Bytef *) buffer_out;
+  cxxopts::Options options(*argv, "A program to welcome the world!");
 
-    deflateInit(&defstream, Z_BEST_COMPRESSION);
-    deflate(&defstream, Z_FINISH);
-    deflateEnd(&defstream);
+  std::string language;
+  std::string name;
 
-    printf("Uncompressed size is: %lu\n", strlen(buffer_in));
-    printf("Compressed size is: %lu\n", strlen(buffer_out));
+  // clang-format off
+  options.add_options()
+    ("h,help", "Show help")
+    ("v,version", "Print the current version number")
+    ("n,name", "Name to greet", cxxopts::value(name)->default_value("World"))
+    ("l,lang", "Language code to use", cxxopts::value(language)->default_value("en"))
+  ;
+  // clang-format on
 
-    printf("ZLIB VERSION: %s\n", zlibVersion());
+  auto result = options.parse(argc, argv);
 
-    return EXIT_SUCCESS;
+  if (result["help"].as<bool>()) {
+    std::cout << options.help() << std::endl;
+    return 0;
+  }
+
+  if (result["version"].as<bool>()) {
+    std::cout << "Greeter, version " << GREETER_VERSION << std::endl;
+    return 0;
+  }
+
+  auto langIt = languages.find(language);
+  if (langIt == languages.end()) {
+    std::cerr << "unknown language code: " << language << std::endl;
+    return 1;
+  }
+
+  greeter::Greeter greeter(name);
+  std::cout << greeter.greet(langIt->second) << std::endl;
+
+  return 0;
 }
