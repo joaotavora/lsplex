@@ -41,14 +41,14 @@ jobs:
         VERBOSE: "1"
       run: |
            ctest --output-on-failure --no-tests=error -j 2
-           ./Greeter
-           ./Greeter -l martian || true
-           ./Greeter -l en
-           ./Greeter -l de
-           ./Greeter -l es
-           ./Greeter -l fr
-           ./Greeter --help
-           ./Greeter --version
+           ./greeter
+           ./greeter -l martian || true
+           ./greeter -l en
+           ./greeter -l de
+           ./greeter -l es
+           ./greeter -l fr
+           ./greeter --help
+           ./greeter --version
 
     - name: Process coverage info
       run: >-
@@ -178,6 +178,9 @@ jobs:
 
     - name: Build
       run: cmake --build build --config Release -j 2
+
+    - name: Install
+      run: cmake --install build --config Release --prefix /tmp/daprefix
 
     - name: Test
       working-directory: build
