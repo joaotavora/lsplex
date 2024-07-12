@@ -5,14 +5,14 @@
 #include <string>
 
 TEST_CASE("Greeter") {
-  using namespace greeter;
+  using namespace greeter;  // NOLINT
 
   Greeter greeter("Tests");
 
-  CHECK(greeter.greet(LanguageCode::EN) == "Hello, Tests!");
-  CHECK(greeter.greet(LanguageCode::DE) == "Hallo Tests!");
-  CHECK(greeter.greet(LanguageCode::ES) == "¡Hola Tests!");
-  CHECK(greeter.greet(LanguageCode::FR) == "Bonjour Tests!");
+  CHECK(greeter.greet(LanguageCode::en) == "Hello, Tests!");
+  CHECK(greeter.greet(LanguageCode::de) == "Hallo Tests!");
+  CHECK(greeter.greet(LanguageCode::es) == "¡Hola Tests!");
+  CHECK(greeter.greet(LanguageCode::fr) == "Bonjour Tests!");
 }
 
 TEST_CASE("Greeter version") {

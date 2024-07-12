@@ -1,20 +1,22 @@
 #include <fmt/format.h>
 #include <greeter/greeter.h>
 
-using namespace greeter;
+namespace greeter {
 
-Greeter::Greeter(std::string _name) : name(std::move(_name)) {}
+Greeter::Greeter(std::string name) : _name(std::move(name)) {}
 
 std::string Greeter::greet(LanguageCode lang) const {
   switch (lang) {
     default:
-    case LanguageCode::EN:
-      return fmt::format("Hello, {}!", name);
-    case LanguageCode::DE:
-      return fmt::format("Hallo {}!", name);
-    case LanguageCode::ES:
-      return fmt::format("¡Hola {}!", name);
-    case LanguageCode::FR:
-      return fmt::format("Bonjour {}!", name);
+    case LanguageCode::en:
+      return fmt::format("Hello, {}!", _name);
+    case LanguageCode::de:
+      return fmt::format("Hallo {}!", _name);
+    case LanguageCode::es:
+      return fmt::format("¡Hola {}!", _name);
+    case LanguageCode::fr:
+      return fmt::format("Bonjour {}!", _name);
   }
 }
+
+}  // namespace greeter

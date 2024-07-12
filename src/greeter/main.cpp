@@ -8,10 +8,10 @@
 
 auto main(int argc, char **argv) -> int {
   const std::unordered_map<std::string, greeter::LanguageCode> languages{
-      {"en", greeter::LanguageCode::EN},
-      {"de", greeter::LanguageCode::DE},
-      {"es", greeter::LanguageCode::ES},
-      {"fr", greeter::LanguageCode::FR},
+      {"en", greeter::LanguageCode::en},
+      {"de", greeter::LanguageCode::de},
+      {"es", greeter::LanguageCode::es},
+      {"fr", greeter::LanguageCode::fr},
   };
 
   cxxopts::Options options(*argv, "A program to welcome the world!");
@@ -40,14 +40,14 @@ auto main(int argc, char **argv) -> int {
     return 0;
   }
 
-  auto langIt = languages.find(language);
-  if (langIt == languages.end()) {
+  auto lang_it = languages.find(language);
+  if (lang_it == languages.end()) {
     fmt::println("Unknown language code: {}", language);
     return 1;
   }
 
   greeter::Greeter greeter(name);
-  fmt::println("{}", greeter.greet(langIt->second));
+  fmt::println("{}", greeter.greet(lang_it->second));
 
   return 0;
 }
