@@ -1,6 +1,5 @@
 # More or less lifted from https://github.com/StableCoder/cmake-scripts
 
-
 function(append value)
   foreach(variable ${ARGN})
     set(${variable}
@@ -9,11 +8,11 @@ function(append value)
   endforeach(variable)
 endfunction()
 
-
 set(_var "${PROJECT_NAME}_USE_SANITIZER")
-option(${_var}
-    "Compile with a sanitizer. Options are: Address, Memory, MemoryWithOrigins, Undefined, Thread, Leak, 'Address;Undefined'"
-    "")
+option(
+  ${_var}
+  "Compile with a sanitizer. Options are: Address, Memory, MemoryWithOrigins, Undefined, Thread, Leak, 'Address;Undefined'"
+  "")
 message(STATUS "${_var} is ${${_var}}")
 if(${_var})
   append("-fno-omit-frame-pointer" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
@@ -55,8 +54,7 @@ if(${_var})
       message(STATUS "Building with Leak sanitizer")
       append("-fsanitize=leak" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
     else()
-      message(
-        FATAL_ERROR "Unsupported value of ${_var}: ${${_var}}")
+      message(FATAL_ERROR "Unsupported value of ${_var}: ${${_var}}")
     endif()
   elseif(MSVC)
     if(${_var} MATCHES "([Aa]ddress)")
