@@ -2,6 +2,7 @@
 .idea/
 .vs/
 .vscode/
+.cache/
 build/
 cmake-build-*/
 /conan/
