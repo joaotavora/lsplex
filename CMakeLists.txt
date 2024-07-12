@@ -51,7 +51,9 @@ add_executable(${PROJECT_NAME}_exe ${sources})
 add_executable(${PROJECT_NAME}::exe ALIAS ${PROJECT_NAME}_exe)
 set_property(TARGET ${PROJECT_NAME}_exe PROPERTY OUTPUT_NAME greeter)
 
-target_link_libraries(${PROJECT_NAME}_exe PRIVATE ${PROJECT_NAME}_lib cxxopts::cxxopts)
+target_link_libraries(${PROJECT_NAME}_exe PRIVATE ${PROJECT_NAME}_lib
+  fmt::fmt
+  cxxopts::cxxopts)
 
 find_package(cxxopts REQUIRED)
 find_package(fmt REQUIRED)

@@ -1,12 +1,13 @@
 #include <greeter/greeter.h>
 #include <greeter/version.h>
 
+#include <fmt/core.h>
+
 #include <cxxopts.hpp>
-#include <iostream>
 #include <string>
 #include <unordered_map>
 
-auto main(int argc, char** argv) -> int {
+auto main(int argc, char **argv) -> int {
   const std::unordered_map<std::string, greeter::LanguageCode> languages{
       {"en", greeter::LanguageCode::EN},
       {"de", greeter::LanguageCode::DE},
@@ -31,23 +32,23 @@ auto main(int argc, char** argv) -> int {
   auto result = options.parse(argc, argv);
 
   if (result["help"].as<bool>()) {
-    std::cout << options.help() << std::endl;
+    fmt::println("{}", options.help());
     return 0;
   }
 
   if (result["version"].as<bool>()) {
-    std::cout << "Greeter, version " << GREETER_VERSION << std::endl;
+    fmt::println("Greeter, version {}", GREETER_VERSION);
     return 0;
   }
 
   auto langIt = languages.find(language);
   if (langIt == languages.end()) {
-    std::cerr << "unknown language code: " << language << std::endl;
+    fmt::println("Unknown language code: {}", language);
     return 1;
   }
 
   greeter::Greeter greeter(name);
-  std::cout << greeter.greet(langIt->second) << std::endl;
+  fmt::println("{}", greeter.greet(langIt->second));
 
   return 0;
 }
