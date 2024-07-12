@@ -11,10 +11,17 @@ endif()
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
-macro(setup_lib_install package)
-  set(multiValueArgs TARGETS DEPS)
-  cmake_parse_arguments(LIB_INSTALL "" "" "${multiValueArgs}" ${ARGN} )
+# Yak-shave: allow package maintainers to freely override the path for
+# the CMake configs
+set(
+  ${PROJECT_NAME}_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/${package}"
+  CACHE STRING "CMake package config location relative to the install prefix"
+)
+set_property(CACHE ${PROJECT_NAME}_INSTALL_CMAKEDIR PROPERTY TYPE PATH)
+mark_as_advanced(${PROJECT_NAME}_INSTALL_CMAKEDIR)
 
+function(setup_lib_install package)
+  cmake_parse_arguments(LIB_INSTALL "" "" "TARGETS;DEPS" ${ARGN} )
   install(
     DIRECTORY
     include/
@@ -42,14 +49,6 @@ macro(setup_lib_install package)
     "${package}ConfigVersion.cmake"
     COMPATIBILITY SameMajorVersion
   )
-
-  # Allow package maintainers to freely override the path for the configs
-  set(
-    ${package}_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/${package}"
-    CACHE STRING "CMake package config location relative to the install prefix"
-  )
-  set_property(CACHE ${package}_INSTALL_CMAKEDIR PROPERTY TYPE PATH)
-  mark_as_advanced(${package}_INSTALL_CMAKEDIR)
 
   include(CMakePackageConfigHelpers)
   # generate the config file that includes the exports
@@ -84,4 +83,4 @@ macro(setup_lib_install package)
     DESTINATION "${${package}_INSTALL_CMAKEDIR}"
     COMPONENT ${package}_Development
   )
-endmacro()
+endfunction()
