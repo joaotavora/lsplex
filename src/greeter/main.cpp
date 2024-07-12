@@ -1,7 +1,6 @@
+#include <fmt/core.h>
 #include <greeter/greeter.h>
 #include <greeter/version.h>
-
-#include <fmt/core.h>
 
 #include <cxxopts.hpp>
 #include <string>
