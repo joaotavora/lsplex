@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.7...3.30)
-option(USE_COVERAGE "Enable test coverage" OFF)
-message("USE_COVERAGE is '${USE_COVERAGE}'")
-if(USE_COVERAGE)
+
+set(_var "${PROJECT_NAME}_USE_COVERAGE")
+option(${_var} "Enable test coverage for ${PROJECT_NAME}" OFF)
+message(STATUS "${_var} is ${${_var}}")
+if(${_var})
   set(LOCAL_LIBRARY_TARGETS "")
   get_property(LOCAL_TARGETS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY
     BUILDSYSTEM_TARGETS)

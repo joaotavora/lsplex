@@ -1,11 +1,10 @@
 cmake_minimum_required(VERSION 3.4...3.30)
 
-option(USE_CCACHE "" OFF)
+set(_var "${PROJECT_NAME}_USE_CCACHE")
+option(${_var} "Use ccache when buildind ${PROJECT_NAME}" OFF)
 set(CCACHE_OPTIONS "" CACHE STRING "options for ccache")
-
-message("USE_CCACHE is '${USE_CCACHE}'")
-if (USE_CCACHE)
-
+message(STATUS "${_var} is ${${_var}}")
+if(${_var})
     find_program(CCACHE_PROGRAM ccache)
 
     if(CCACHE_PROGRAM)

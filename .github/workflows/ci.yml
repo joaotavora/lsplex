@@ -26,8 +26,8 @@ jobs:
            -DCMAKE_TOOLCHAIN_FILE=conan/conan_toolchain.cmake
            -DCMAKE_BUILD_TYPE=Release
            -DGreeter_DEV=ON
-           -DUSE_COVERAGE=ON
-           -DUSE_CCACHE=ON
+           -DGreeter_USE_COVERAGE=ON
+           -DGreeter_USE_CCACHE=ON
 
     - name: Build
       env:
@@ -80,8 +80,8 @@ jobs:
            -DCMAKE_TOOLCHAIN_FILE=conan/conan_toolchain.cmake
            -DCMAKE_BUILD_TYPE=Release
            -DGreeter_DEV=ON
-           -DUSE_SANITIZER=Address,Undefined
-           -DUSE_CCACHE=ON
+           -DGreeter_USE_SANITIZER=Address,Undefined
+           -DGreeter_USE_CCACHE=ON
 
     - name: Build
       env:
@@ -142,7 +142,7 @@ jobs:
            cmake -B build
            -G "Visual Studio 17 2022"
            -DCMAKE_TOOLCHAIN_FILE="conan/conan_toolchain.cmake"
-           -DUSE_CCACHE=ON
+           -DGreeter_USE_CCACHE=ON
            -DCMAKE_CONFIGURATION_TYPES=Release
            -DGreeter_DEV=ON
            -DCMAKE_CXX_FLAGS="${LOTSAFLAGS}"
@@ -154,7 +154,7 @@ jobs:
            cmake -B build
            -G "Xcode"
            -DCMAKE_TOOLCHAIN_FILE=conan/conan_toolchain.cmake
-           -DUSE_CCACHE=ON
+           -DGreeter_USE_CCACHE=ON
            -DCMAKE_CONFIGURATION_TYPES=Release
            -DGreeter_DEV=ON
            -DCMAKE_CXX_FLAGS="-fstack-protector-strong -Wall -Wextra -Wpedantic
@@ -172,7 +172,7 @@ jobs:
            -G "Unix Makefiles"
            -DCMAKE_TOOLCHAIN_FILE=conan/conan_toolchain.cmake
            -DCMAKE_BUILD_TYPE=Release
-           -DUSE_CCACHE=ON
+           -DGreeter_USE_CCACHE=ON
            -DCMAKE_CONFIGURATION_TYPES=Release
            -DGreeter_DEV=ON
 
