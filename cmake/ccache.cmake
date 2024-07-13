@@ -16,7 +16,7 @@ if(${_var})
     set(CCCACHE_EXPORTS "")
 
     foreach(option ${CCACHE_OPTIONS})
-        set(CCCACHE_EXPORTS "${CCCACHE_EXPORTS}\nexport ${option}")
+      set(CCCACHE_EXPORTS "${CCCACHE_EXPORTS}\nexport ${option}")
     endforeach()
 
     configure_file(${CMAKE_CURRENT_LIST_DIR}/launch-c.in ccache.cmake/launch-c)

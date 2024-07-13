@@ -11,11 +11,18 @@ else
 endif
 
 # Targets for devs
-configure-release: CMAKE_FLAGS+=-DCMAKE_BUILD_TYPE=Release -DGreeter_DEV=ON
-configure-debug: CMAKE_FLAGS+=-DCMAKE_BUILD_TYPE=Debug -DGreeter_DEV=ON \
-                 -DUSE_SANITIZER=Address \
-                 -DUSE_CCACHE=ON
-configure-coverage: CMAKE_FLAGS+=-DGreeter_DEV=ON -DGreeter_USE_COVERAGE=ON
+configure-release:                                     \
+      CMAKE_FLAGS+=-DCMAKE_BUILD_TYPE=Release          \
+                   -DGreeter_DEV=ON
+configure-debug:                                       \
+      CMAKE_FLAGS+=-DCMAKE_BUILD_TYPE=Debug            \
+                   -DGreeter_DEV=ON                    \
+                   -DGreeter_USE_SANITIZER=Address     \
+                   -DGreeter_USE_CCACHE=ON
+configure-coverage:                                    \
+      CMAKE_FLAGS+=-DCMAKE_BUILD_TYPE=Release          \
+                    -DGreeter_DEV=ON                   \
+                    -DGreeter_USE_COVERAGE=ON
 configure-%: phony
 	cmake $(CMAKE_FLAGS) -S. -B build/$*
 
@@ -58,8 +65,13 @@ compile_commands.json: configure-debug
 
 check-format: phony
 	find src include test -type f | xargs clang-format --dry-run --Werror
+	find cmake -type f -iname "*.cmake" | xargs cmake-format CMakeLists.txt
 
 fix-format: phony
 	find src include test -type f | xargs clang-format -i
+	find cmake -type f -iname "*.cmake" | xargs cmake-format -i CMakeLists.txt
+
+fix-codespell: phony
+
 
 .PHONY: phony
