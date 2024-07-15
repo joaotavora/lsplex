@@ -3,6 +3,7 @@ set(package_config_template ${CMAKE_CURRENT_LIST_DIR}/package-config.cmake.in)
 if(PROJECT_IS_TOP_LEVEL)
   set(CMAKE_INSTALL_INCLUDEDIR
       "include/${PROJECT_NAME}-${PROJECT_VERSION}"
+      # Could use slash here ^^^ as well, I guess
       CACHE STRING "")
   set_property(CACHE CMAKE_INSTALL_INCLUDEDIR PROPERTY TYPE PATH)
 endif()
