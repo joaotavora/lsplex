@@ -4,6 +4,14 @@ project(
   VERSION 1.0.0
   LANGUAGES CXX)
 include(cmake/prelude.cmake)
+
+if(Greeter_DOCS)
+  add_subdirectory("./doc")
+  if (Greeter_DOCS STREQUAL "SKIP_OTHER_TARGETS")
+    return()
+  endif()
+endif()
+
 include(cmake/ccache.cmake)
 
 # --- A library target
