@@ -57,7 +57,7 @@ clean: phony
 	rm -rf build*
 
 doc: phony
-	cmake -DGreeter_DOCS=ON -S. -B build-docs
+	cmake -DGreeter_DOCS=SKIP_OTHER_TARGETS -S. -B build-docs
 	cmake --build build-docs --target GreeterDocs
 
 compile_commands.json: configure-debug
