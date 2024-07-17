@@ -185,3 +185,45 @@ jobs:
     - name: Test
       working-directory: build
       run: ctest --output-on-failure --no-tests=error -C Release -j 2
+
+  docs:
+    # Deploy docs only when builds succeed
+    needs: [sanitize, test]
+
+    runs-on: ubuntu-22.04
+
+    # To enable, first you have to create an orphaned gh-pages branch:
+    #
+    #    git switch --orphan gh-pages
+    #    git commit --allow-empty -m "Initial commit"
+    #    git push -u origin gh-pages
+
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+        cache-dependency-path: .github/etc/requirements.txt
+
+    - name: Install m.css dependencies
+      run: pip3 install jinja2 Pygments
+
+    - name: Install Doxygen
+      run: sudo apt-get update -q
+        && sudo apt-get install doxygen -q -y
+
+    - name: Build docs
+      run: |
+        cmake -DGreeter_DOCS=SKIP_OTHER_TARGETS -S. -B /tmp/docbuild
+        cmake --build /tmp/docbuild --target GreeterDocs
+
+    - name: Deploy docs
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: /tmp/docbuild/doc/doxygen/html
