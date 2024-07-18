@@ -1,0 +1,12 @@
+#pragma once
+
+// clang-format off
+// NOLINTBEGIN
+#define LSPLEX_VERSION_MAJOR @LsPlex_VERSION_MAJOR@
+#define LSPLEX_VERSION_MINOR @LsPlex_VERSION_MINOR@
+#define LSPLEX_VERSION_PATCH @LsPlex_VERSION_PATCH@
+#define LSPLEX_VERSION_TWEAK @LsPlex_VERSION_TWEAK@
+
+#define LSPLEX_VERSION "@LsPlex_VERSION@"
+// NOLINTEND
+// clang-format on

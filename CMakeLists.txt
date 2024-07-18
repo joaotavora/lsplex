@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.14...3.30)
 project(
-  Greeter
+  LsPlex
   VERSION 1.0.0
   LANGUAGES CXX)
 include(cmake/prelude.cmake)
 
-if(Greeter_DOCS)
+if(LsPlex_DOCS)
   add_subdirectory("./doc")
-  if (Greeter_DOCS STREQUAL "SKIP_OTHER_TARGETS")
+  if (LsPlex_DOCS STREQUAL "SKIP_OTHER_TARGETS")
     return()
   endif()
 endif()
@@ -17,11 +17,11 @@ include(cmake/ccache.cmake)
 # --- A library target
 #
 # There could be more such sections (so _lib1, _lib2 instead of _lib). Note
-# OUTPUT_NAME is 'greeter' so this will likely become libgreeter.a/so on linux.
-file(GLOB sources CONFIGURE_DEPENDS src/libgreeter/*.cpp)
+# OUTPUT_NAME is 'lsplex' so this will likely become liblsplex.a/so on linux.
+file(GLOB sources CONFIGURE_DEPENDS src/liblsplex/*.cpp)
 add_library(${PROJECT_NAME}_lib ${sources})
-add_library(greeter::greeter ALIAS ${PROJECT_NAME}_lib)
-configure_file(include/greeter/version.h.in include/greeter/version.h @ONLY)
+add_library(lsplex::lsplex ALIAS ${PROJECT_NAME}_lib)
+configure_file(include/lsplex/version.h.in include/lsplex/version.h @ONLY)
 
 set_target_properties(
   ${PROJECT_NAME}_lib
@@ -30,7 +30,7 @@ set_target_properties(
              VERSION "${PROJECT_VERSION}"
              SOVERSION "${PROJECT_VERSION_MAJOR}"
              EXPORT_NAME ${PROJECT_NAME} # Tweak if more than one lib.
-             OUTPUT_NAME greeter)
+             OUTPUT_NAME lsplex)
 target_include_directories(
   ${PROJECT_NAME}_lib ${warning_guard}
   PUBLIC "\$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
@@ -39,9 +39,9 @@ include(GenerateExportHeader)
 generate_export_header(
   ${PROJECT_NAME}_lib
   BASE_NAME
-  greeter
+  lsplex
   EXPORT_FILE_NAME
-  include/greeter/export.hpp
+  include/lsplex/export.hpp
   CUSTOM_CONTENT_FROM_VARIABLE
   pragma_suppress_c4251)
 
@@ -54,11 +54,11 @@ endif()
 
 # --- An executable target.
 #
-# Note OUTPUT_NAME also lowercase 'greeter'
-file(GLOB sources CONFIGURE_DEPENDS src/greeter/*.cpp)
+# Note OUTPUT_NAME also lowercase 'lsplex'
+file(GLOB sources CONFIGURE_DEPENDS src/lsplex/*.cpp)
 add_executable(${PROJECT_NAME}_exe ${sources})
 add_executable(${PROJECT_NAME}::exe ALIAS ${PROJECT_NAME}_exe)
-set_property(TARGET ${PROJECT_NAME}_exe PROPERTY OUTPUT_NAME greeter)
+set_property(TARGET ${PROJECT_NAME}_exe PROPERTY OUTPUT_NAME lsplex)
 
 target_link_libraries(${PROJECT_NAME}_exe PRIVATE ${PROJECT_NAME}_lib fmt::fmt
                                                   cxxopts::cxxopts)

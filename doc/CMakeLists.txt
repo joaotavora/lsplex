@@ -17,7 +17,7 @@ configure_file(./Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
 configure_file(./conf.py.in ${CMAKE_CURRENT_BINARY_DIR}/conf.py)
 
 add_custom_target(
-  GreeterDocs
+  LsPlexDocs
   ${CMAKE_COMMAND} -E make_directory "${DOXYGEN_OUTPUT_DIRECTORY}"
   COMMAND "${CMAKE_CURRENT_BINARY_DIR}/mcss/documentation/doxygen.py"
   "${CMAKE_CURRENT_BINARY_DIR}/conf.py"

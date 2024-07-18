@@ -1,12 +1,12 @@
 #include <fmt/core.h>
-#include <greeter/greeter.h>
+#include <lsplex/lsplex.h>
 #include <string>
 
-namespace greeter {
+namespace lsplex {
 
-Greeter::Greeter(std::string name) : _name(std::move(name)) {}
+LsPlex::LsPlex(std::string name) : _name(std::move(name)) {}
 
-std::string Greeter::greet(LanguageCode lang) const {
+std::string LsPlex::greet(LanguageCode lang) const {
   switch (lang) {
     default:
     case LanguageCode::en:
@@ -20,4 +20,4 @@ std::string Greeter::greet(LanguageCode lang) const {
   }
 }
 
-}  // namespace greeter
+}  // namespace lsplex

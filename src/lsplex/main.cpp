@@ -1,17 +1,17 @@
 #include <fmt/core.h>
-#include <greeter/greeter.h>
-#include <greeter/version.h>
+#include <lsplex/lsplex.h>
+#include <lsplex/version.h>
 
 #include <cxxopts.hpp>
 #include <string>
 #include <unordered_map>
 
 auto main(int argc, char **argv) -> int {
-  const std::unordered_map<std::string, greeter::LanguageCode> languages{
-      {"en", greeter::LanguageCode::en},
-      {"de", greeter::LanguageCode::de},
-      {"es", greeter::LanguageCode::es},
-      {"fr", greeter::LanguageCode::fr},
+  const std::unordered_map<std::string, lsplex::LanguageCode> languages{
+      {"en", lsplex::LanguageCode::en},
+      {"de", lsplex::LanguageCode::de},
+      {"es", lsplex::LanguageCode::es},
+      {"fr", lsplex::LanguageCode::fr},
   };
 
   cxxopts::Options options(*argv, "A program to welcome the world!");
@@ -36,7 +36,7 @@ auto main(int argc, char **argv) -> int {
   }
 
   if (result["version"].as<bool>()) {
-    fmt::println("Greeter, version {}", GREETER_VERSION);
+    fmt::println("LsPlex, version {}", LSPLEX_VERSION);
     return 0;
   }
 
@@ -46,8 +46,8 @@ auto main(int argc, char **argv) -> int {
     return 1;
   }
 
-  greeter::Greeter greeter(name);
-  fmt::println("{}", greeter.greet(lang_it->second));
+  lsplex::LsPlex lsplex(name);
+  fmt::println("{}", lsplex.greet(lang_it->second));
 
   return 0;
 }

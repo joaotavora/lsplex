@@ -13,16 +13,16 @@ endif
 # Targets for devs
 configure-release:                                     \
       CMAKE_FLAGS+=-DCMAKE_BUILD_TYPE=Release          \
-                   -DGreeter_DEV=ON
+                   -DLsPlex_DEV=ON
 configure-debug:                                       \
       CMAKE_FLAGS+=-DCMAKE_BUILD_TYPE=Debug            \
-                   -DGreeter_DEV=ON                    \
-                   -DGreeter_USE_SANITIZER=Address     \
-                   -DGreeter_USE_CCACHE=ON
+                   -DLsPlex_DEV=ON                    \
+                   -DLsPlex_USE_SANITIZER=Address     \
+                   -DLsPlex_USE_CCACHE=ON
 configure-coverage:                                    \
       CMAKE_FLAGS+=-DCMAKE_BUILD_TYPE=Release          \
-                    -DGreeter_DEV=ON                   \
-                    -DGreeter_USE_COVERAGE=ON
+                    -DLsPlex_DEV=ON                   \
+                    -DLsPlex_USE_COVERAGE=ON
 configure-%: phony
 	cmake $(CMAKE_FLAGS) -S. -B build/$*
 
@@ -36,29 +36,29 @@ watch-%: phony
 	find CMakeLists.txt src include test -type f | entr -r -s 'make check-$*'
 
 coverage: check-coverage
-	./build/coverage/greeter
-	./build/coverage/greeter -l martian || true
-	./build/coverage/greeter -l en
-	./build/coverage/greeter -l de
-	./build/coverage/greeter -l es
-	./build/coverage/greeter -l fr
-	./build/coverage/greeter --help
-	./build/coverage/greeter --version
+	./build/coverage/lsplex
+	./build/coverage/lsplex -l martian || true
+	./build/coverage/lsplex -l en
+	./build/coverage/lsplex -l de
+	./build/coverage/lsplex -l es
+	./build/coverage/lsplex -l fr
+	./build/coverage/lsplex --help
+	./build/coverage/lsplex --version
 	lcov -c -o build/coverage/coverage.info -d build/coverage  \
              --include "${PWD}/*"
 	genhtml --legend -q build/coverage/coverage.info -p ${PWD} \
                 -o build/coverage/coverage_html
 
 run-%: configure-% phony
-	cmake --build build-$* --target GreeterExec
-	build-$*/Greeter --version
+	cmake --build build-$* --target LsPlexExec
+	build-$*/LsPlex --version
 
 clean: phony
 	rm -rf build*
 
 doc: phony
-	cmake -DGreeter_DOCS=SKIP_OTHER_TARGETS -S. -B build-docs
-	cmake --build build-docs --target GreeterDocs
+	cmake -DLsPlex_DOCS=SKIP_OTHER_TARGETS -S. -B build-docs
+	cmake --build build-docs --target LsPlexDocs
 
 compile_commands.json: configure-debug
 	ln -sf build-debug/compile_commands.json compile_commands.json

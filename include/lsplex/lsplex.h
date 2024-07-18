@@ -2,25 +2,25 @@
 
 #include <string>
 
-#include "greeter/export.hpp"
+#include "lsplex/export.hpp"
 
-namespace greeter {
+namespace lsplex {
 
-/**  Language codes to be used with the Greeter class */
-GREETER_EXPORT enum class LanguageCode { en, de, es, fr };
+/**  Language codes to be used with the LsPlex class */
+LSPLEX_EXPORT enum class LanguageCode { en, de, es, fr };
 
 /**
  * @brief A class for saying hello in multiple languages
  */
-GREETER_EXPORT class Greeter {
+LSPLEX_EXPORT class LsPlex {
   std::string _name;
 
 public:
   /**
-   * @brief Creates a new greeter
+   * @brief Creates a new lsplex
    * @param name the name to greet
    */
-  explicit Greeter(std::string name);
+  explicit LsPlex(std::string name);
 
   /**
    * @brief Creates a localized string containing the greeting
@@ -30,4 +30,4 @@ public:
   [[nodiscard]] std::string greet(LanguageCode lang = LanguageCode::en) const;
 };
 
-}  // namespace greeter
+}  // namespace lsplex
