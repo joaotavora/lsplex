@@ -1,0 +1,36 @@
+Content-Length: 12
+
+{"hello":42}
+Content-Length: 13
+Technically-more-correct: yes
+
+{"hello":43}
+Content-Length: 12
+
+{"hello":44}Also-correct: yes
+Content-Length: 12
+
+{"hello":45}
+Content-Length: 13
+Not-a-header-but-we-ignore-it
+
+{"hello":46}
+Header5: yes
+Header6: yes
+Content-Length: 12
+Header8: Really
+Header9: Really
+
+{"hello":47}
+Header1: yes-very-long-header-yes-indeed
+Header2: yes-very-long-header-yes-indeed
+Header3: yes-very-long-header-yes-indeed
+Header4: yes-very-long-header-yes-indeed
+Header5: yes-very-long-header-yes-indeed
+Header6: yes-very-long-header-yes-indeed
+Header8: yes-very-long-header-yes-indeed
+Header9: yes-very-long-header-yes-indeed
+Content-Length: 12
+
+{"hello":47}
+

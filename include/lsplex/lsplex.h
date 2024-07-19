@@ -1,33 +1,27 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "lsplex/export.hpp"
 
 namespace lsplex {
 
-/**  Language codes to be used with the LsPlex class */
-LSPLEX_EXPORT enum class LanguageCode { en, de, es, fr };
+LSPLEX_EXPORT class LsInvocation {
+public:
+  LsInvocation(std::vector<std::string> args) : _args(std::move(args)) {} // NOLINT
+  private:
+  std::vector<std::string> _args;
+};
 
-/**
- * @brief A class for saying hello in multiple languages
- */
 LSPLEX_EXPORT class LsPlex {
-  std::string _name;
+  std::vector<LsInvocation> _invocations;
 
 public:
-  /**
-   * @brief Creates a new lsplex
-   * @param name the name to greet
-   */
-  explicit LsPlex(std::string name);
+  explicit LsPlex(std::vector<LsInvocation> invocations);
 
-  /**
-   * @brief Creates a localized string containing the greeting
-   * @param lang the language to greet in
-   * @return a string containing the greeting
-   */
-  [[nodiscard]] std::string greet(LanguageCode lang = LanguageCode::en) const;
+  void start();
+
 };
 
 }  // namespace lsplex
