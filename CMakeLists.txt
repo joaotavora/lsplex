@@ -7,7 +7,7 @@ include(cmake/prelude.cmake)
 
 if(LsPlex_DOCS)
   add_subdirectory("./doc")
-  if (LsPlex_DOCS STREQUAL "SKIP_OTHER_TARGETS")
+  if(LsPlex_DOCS STREQUAL "SKIP_OTHER_TARGETS")
     return()
   endif()
 endif()
