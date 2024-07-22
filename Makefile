@@ -16,12 +16,13 @@ configure-release:                                     \
                    -DLsPlex_DEV=ON
 configure-debug:                                       \
       CMAKE_FLAGS+=-DCMAKE_BUILD_TYPE=Debug            \
-                   -DLsPlex_DEV=ON                    \
-                   -DLsPlex_USE_SANITIZER=Address     \
+                   -DLsPlex_DEV=ON                     \
+                   -DLsPlex_USE_SANITIZER='Address;Undefined'\
                    -DLsPlex_USE_CCACHE=ON
+
 configure-coverage:                                    \
       CMAKE_FLAGS+=-DCMAKE_BUILD_TYPE=Release          \
-                    -DLsPlex_DEV=ON                   \
+                    -DLsPlex_DEV=ON                    \
                     -DLsPlex_USE_COVERAGE=ON
 configure-%: phony
 	cmake $(CMAKE_FLAGS) -S. -B build/$*
