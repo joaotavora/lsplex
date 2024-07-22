@@ -1,6 +1,7 @@
 # Enable ALL the things! Except not really
 Checks: "*,\
   -google-readability-todo,\
+  -*-braces-around-statements,\
   -altera-*,\
   -fuchsia-*,\
   fuchsia-multiple-inheritance,\
@@ -8,6 +9,10 @@ Checks: "*,\
   -llvm-include-order,\
   -llvmlibc-*,\
   -misc-non-private-member-variables-in-classes,\
+  -cppcoreguidelines-avoid-magic-numbers,\
+  -readability-magic-numbers,\
+  -readability-identifier-length,\
+  -readability-identifier-naming,\
   -modernize-use-trailing-return-type"
 WarningsAsErrors: ''
 CheckOptions:
@@ -129,7 +134,7 @@ CheckOptions:
   - key: 'readability-identifier-naming.StaticVariableCase'
     value: 'lower_case'
   - key: 'readability-identifier-naming.StructCase'
-    value: 'lower_case'
+    value: 'CamelCase'
   - key: 'readability-identifier-naming.TemplateParameterCase'
     value: 'CamelCase'
   - key: 'readability-identifier-naming.TemplateTemplateParameterCase'
