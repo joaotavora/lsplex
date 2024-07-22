@@ -28,7 +28,7 @@ configure-%: phony
 	cmake $(CMAKE_FLAGS) -S. -B build/$*
 
 build-%: configure-% phony
-	cmake --build build/$*
+	cmake --build build/$* -j
 
 check-%: build-% phony
 	ctest --test-dir build/$* --output-on-failure ${CTEST_OPTIONS}
