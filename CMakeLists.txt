@@ -45,11 +45,14 @@ generate_export_header(
   CUSTOM_CONTENT_FROM_VARIABLE
   pragma_suppress_c4251)
 
-target_link_libraries(${PROJECT_NAME}_lib PRIVATE fmt::fmt)
+target_link_libraries(
+  ${PROJECT_NAME}_lib
+  PUBLIC Boost::json Boost::boost
+  PRIVATE fmt::fmt)
 
 if(NOT CMAKE_SKIP_INSTALL_RULES)
   include(cmake/lib-install.cmake)
-  setup_lib_install(${PROJECT_NAME} TARGETS ${PROJECT_NAME}_lib DEPS fmt)
+  setup_lib_install(${PROJECT_NAME} TARGETS ${PROJECT_NAME}_lib DEPS fmt Boost)
 endif()
 
 # --- An executable target.
@@ -65,6 +68,7 @@ target_link_libraries(${PROJECT_NAME}_exe PRIVATE ${PROJECT_NAME}_lib fmt::fmt
 
 find_package(cxxopts REQUIRED)
 find_package(fmt REQUIRED)
+find_package(Boost REQUIRED COMPONENTS json)
 
 include(cmake/compiler-features.cmake)
 
