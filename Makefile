@@ -50,8 +50,8 @@ coverage: check-coverage
                 -o build/coverage/coverage_html
 
 run-%: configure-% phony
-	cmake --build build-$* --target LsPlexExec
-	build-$*/LsPlex --version
+	cmake --build build/$* --target LsPlex_exe
+	build/$*/lsplex --version
 
 clean: phony
 	rm -rf build*
