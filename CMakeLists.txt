@@ -92,6 +92,8 @@ add_executable(${PROJECT_NAME}_tests ${sources})
 target_link_libraries(${PROJECT_NAME}_tests ${PROJECT_NAME}_lib
                       doctest::doctest)
 
+file(COPY test/resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 doctest_discover_tests(${PROJECT_NAME}_tests)
 enable_testing()
 add_test(NAME ${PROJECT_NAME}_tests COMMAND ${PROJECT_NAME}_tests)
