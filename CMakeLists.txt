@@ -70,22 +70,15 @@ find_package(cxxopts REQUIRED)
 find_package(fmt REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
 
-include(cmake/compiler-features.cmake)
-
 if(NOT CMAKE_SKIP_INSTALL_RULES)
   include(cmake/exe-install.cmake)
   setup_exe_install(${PROJECT_NAME} TARGETS ${PROJECT_NAME}_exe)
 endif()
 
-# --- Dev helpers ---
+# --- Dev cutoff ---
 if(NOT ${PROJECT_NAME}_DEV)
   return()
 endif()
-
-include(CPack)
-include(cmake/sanitizers.cmake)
-include(cmake/coverage.cmake)
-include(cmake/compiler-flags.cmake)
 
 # --- Testing ---
 find_package(doctest REQUIRED)
@@ -101,3 +94,11 @@ file(COPY test/resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 doctest_discover_tests(${PROJECT_NAME}_tests)
 enable_testing()
 add_test(NAME ${PROJECT_NAME}_tests COMMAND ${PROJECT_NAME}_tests)
+
+# --- Dev stuff ---
+include(CPack)
+include(cmake/sanitizers.cmake)
+include(cmake/coverage.cmake)
+include(cmake/compiler-features.cmake)
+include(cmake/compiler-flags.cmake)
+
