@@ -1,18 +1,20 @@
 #include <doctest/doctest.h>
+#include <lsplex/jsonrpc.h>
+
 #include <boost/asio/posix/stream_descriptor.hpp>
+#include <boost/asio/thread_pool.hpp>
 #include <boost/json/object.hpp>
 #include <boost/process/child.hpp>
 #include <boost/process/io.hpp>
-#include "lsplex/jsonrpc.h"
 
 namespace bp = boost::process;
 namespace asio = boost::asio;
 namespace json = boost::json;
 
 TEST_CASE("Get JSON objects from jsonrpc::istream") {
-  asio::io_context ctx;
+  asio::thread_pool ioc{1};
   auto pin = std::make_unique<boost::asio::posix::stream_descriptor>(
-      ctx,
+      ioc,
       // NOLINTNEXTLINE(*vararg, android*));
       ::open("resources/jsonrpc_1.txt", O_RDONLY));
   lsplex::jsonrpc::istream is(std::move(pin));
