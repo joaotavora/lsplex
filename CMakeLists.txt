@@ -87,6 +87,7 @@ include(doctest)
 file(GLOB sources CONFIGURE_DEPENDS "./test/*.cpp")
 add_executable(${PROJECT_NAME}_tests ${sources})
 target_link_libraries(${PROJECT_NAME}_tests ${PROJECT_NAME}_lib
+                      Boost::json Boost::boost
                       doctest::doctest)
 
 file(COPY test/resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
