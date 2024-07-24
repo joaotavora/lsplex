@@ -1,28 +1,30 @@
 #pragma once
 
-#include <boost/asio/awaitable.hpp>
-#include <boost/asio/posix/basic_stream_descriptor.hpp>
-#include <boost/asio/streambuf.hpp>
+#include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/json/object.hpp>
-#include <vector>
+#include <memory>
 
 #include "lsplex/export.hpp"
 
 namespace lsplex::jsonrpc {
 
-namespace asio = boost::asio;
 namespace json = boost::json;
+namespace asio = boost::asio;
+
+namespace detail {
+  struct istream_impl;
+}  // namespace detail
 
 LSPLEX_EXPORT class istream {
-  using stream_t = boost::asio::posix::basic_stream_descriptor<>;
-  std::unique_ptr<stream_t> _pin;
-  asio::streambuf _header_buf{30};
-  std::vector<char> _msg_buf;
-  asio::awaitable<json::object> get_1();
+  std::unique_ptr<detail::istream_impl> _pimpl;
 
 public:
-  LSPLEX_EXPORT explicit istream(std::unique_ptr<stream_t> pin)
-      : _pin(std::move(pin)) {}
-  LSPLEX_EXPORT [[nodiscard]] boost::json::object get();
+  LSPLEX_EXPORT istream(const istream &) = delete;
+  istream(istream &&) = delete;
+  istream &operator=(const istream &) = delete;
+  istream &operator=(istream &&) = delete;
+  explicit istream(asio::posix::stream_descriptor d);
+  LSPLEX_EXPORT [[nodiscard]] json::object get();
+  ~istream(); // see https://stackoverflow.com/questions/9020372/how-do-i-use-unique-ptr-for-pimpl
 };
 }  // namespace lsplex::jsonrpc

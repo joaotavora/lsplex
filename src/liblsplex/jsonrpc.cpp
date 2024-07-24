@@ -6,8 +6,10 @@
 #include <boost/asio/experimental/as_tuple.hpp>
 #include <boost/asio/experimental/awaitable_operators.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/read_until.hpp>
+#include <boost/asio/streambuf.hpp>
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/asio/use_future.hpp>
 #include <boost/json/object.hpp>
@@ -16,10 +18,9 @@
 #include <memory_resource>
 #include <regex>
 
-namespace asio = boost::asio;
-namespace json = boost::json;
-
 namespace lsplex::jsonrpc::detail {
+
+namespace asio = boost::asio;
 
 struct parse_state {
   size_t content_length = 0;
@@ -82,6 +83,13 @@ struct parse_mandatory_headers {
   }
 };
 
+struct istream_impl {
+  asio::posix::stream_descriptor _in;
+  asio::streambuf _header_buf{30};
+  std::vector<char> _msg_buf;
+  asio::awaitable<json::object> get_1();
+  json::object get();
+};
 }  // namespace lsplex::jsonrpc::detail
 
 namespace boost::asio {
@@ -90,16 +98,15 @@ struct is_match_condition<lsplex::jsonrpc::detail::parse_mandatory_headers>
     : public boost::true_type {};
 }  // namespace boost::asio
 
-namespace lsplex::jsonrpc {
-
-[[nodiscard]] asio::awaitable<json::object> istream::get_1() {
+namespace lsplex::jsonrpc::detail {
+[[nodiscard]] asio::awaitable<json::object> istream_impl::get_1() {
   constexpr auto use_nothrow_awaitable
       = asio::experimental::as_tuple(asio::use_awaitable);
 
   detail::parse_state state;
 again:
   auto [ec, read] = co_await asio::async_read_until(
-      *_pin, _header_buf, detail::parse_mandatory_headers{&state},
+      _in, _header_buf, detail::parse_mandatory_headers{&state},
       use_nothrow_awaitable);
   if (ec) {
     if (ec == asio::error::misc_errors::not_found) {
@@ -127,15 +134,24 @@ again:
 
   if (sz < state.content_length)
     co_await asio::async_read(
-        *_pin, asio::buffer(&_msg_buf[sz], state.content_length - sz),
+        _in, asio::buffer(&_msg_buf[sz], state.content_length - sz),
         asio::use_awaitable);
 
   co_return json::parse(std::string_view{_msg_buf.data(), _msg_buf.size()})
       .as_object();
 }
 
-[[nodiscard]] boost::json::object lsplex::jsonrpc::istream::get() {
-  return asio::co_spawn(_pin->get_executor(), get_1(), asio::use_future).get();
+[[nodiscard]] json::object istream_impl::get() {
+  return asio::co_spawn(_in.get_executor(), get_1(), asio::use_future).get();
 }
 
+}  // namespace lsplex::jsonrpc::detail
+
+namespace lsplex::jsonrpc {
+json::object istream::get() { return _pimpl->get(); }
+
+istream::istream(asio::posix::stream_descriptor d)
+: _pimpl(std::make_unique<detail::istream_impl>(std::move(d))) {}
+
+istream::~istream() = default;
 }  // namespace lsplex::jsonrpc
