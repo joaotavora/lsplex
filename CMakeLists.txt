@@ -48,7 +48,7 @@ generate_export_header(
 target_link_libraries(
   ${PROJECT_NAME}_lib
   PUBLIC Boost::json Boost::boost
-  PRIVATE fmt::fmt)
+  PRIVATE fmt::fmt Boost::filesystem)
 
 if(NOT CMAKE_SKIP_INSTALL_RULES)
   include(cmake/lib-install.cmake)
@@ -68,7 +68,7 @@ target_link_libraries(${PROJECT_NAME}_exe PRIVATE ${PROJECT_NAME}_lib fmt::fmt
 
 find_package(cxxopts REQUIRED)
 find_package(fmt REQUIRED)
-find_package(Boost REQUIRED COMPONENTS json)
+find_package(Boost REQUIRED COMPONENTS json filesystem)
 
 if(NOT CMAKE_SKIP_INSTALL_RULES)
   include(cmake/exe-install.cmake)
@@ -87,7 +87,7 @@ include(doctest)
 file(GLOB sources CONFIGURE_DEPENDS "./test/*.cpp")
 add_executable(${PROJECT_NAME}_tests ${sources})
 target_link_libraries(${PROJECT_NAME}_tests ${PROJECT_NAME}_lib
-                      Boost::json Boost::boost
+                      Boost::json Boost::filesystem Boost::boost
                       doctest::doctest)
 
 file(COPY test/resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
