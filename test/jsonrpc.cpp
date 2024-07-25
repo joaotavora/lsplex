@@ -33,13 +33,13 @@ TEST_CASE("Get JSON objects from a process's stdout") {
 
   bp::pipe child_out;
   bp::pipe child_in;
+
+  child_in.assign_source(::open("resources/jsonrpc_1.txt", O_RDONLY | O_CLOEXEC));
   // clang-format off
   bp::child c{"cat", bp::std_out > child_out,
                      bp::std_in  < child_in,
                      bp::std_err > stderr};
   // clang-format on
-
-  child_out.assign_source(::open("resources/jsonrpc_1.txt", O_RDONLY | O_CLOEXEC));
   jsonrpc::istream is{stream_descriptor{ioc, child_out.native_source()}};
 
   CHECK(is.get() == json::object{{"hello", 42}});
