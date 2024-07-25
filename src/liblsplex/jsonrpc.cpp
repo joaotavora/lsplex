@@ -12,8 +12,10 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/asio/use_future.hpp>
+#include <boost/asio/write.hpp>
 #include <boost/json/object.hpp>
 #include <boost/json/parse.hpp>
+#include <boost/json/serialize.hpp>
 #include <boost/type_traits/integral_constant.hpp>
 #include <memory_resource>
 #include <regex>
@@ -92,10 +94,11 @@ struct is_match_condition<lsplex::jsonrpc::detail::parse_mandatory_headers>
 }  // namespace boost::asio
 
 namespace lsplex::jsonrpc {
-[[nodiscard]] asio::awaitable<json::object> istream::get_1() {
-  constexpr auto use_nothrow_awaitable
-      = asio::experimental::as_tuple(asio::use_awaitable);
 
+constexpr auto use_nothrow_awaitable
+    = asio::experimental::as_tuple(asio::use_awaitable);
+
+[[nodiscard]] asio::awaitable<json::object> istream::async_get() {
   detail::parse_state state;
 again:
   auto [ec, read] = co_await asio::async_read_until(
@@ -134,5 +137,12 @@ again:
       .as_object();
 }
 
-}  // namespace lsplex::jsonrpc
+asio::awaitable<void> ostream::async_put(const json::object& o) {
+  const auto s = json::serialize(o);  // FIXME: find a more eff
+  const auto header = fmt::format("Content-Length: {}\r\n\r\n", s.size());
 
+  co_await asio::async_write(_out, asio::buffer(header), asio::use_awaitable);
+  co_await asio::async_write(_out, asio::buffer(s), asio::use_awaitable);
+  co_return;
+}
+}  // namespace lsplex::jsonrpc
