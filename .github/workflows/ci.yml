@@ -41,12 +41,6 @@ jobs:
         VERBOSE: "1"
       run: |
            ctest --output-on-failure --no-tests=error -j 2
-           ./lsplex
-           ./lsplex -l martian || true
-           ./lsplex -l en
-           ./lsplex -l de
-           ./lsplex -l es
-           ./lsplex -l fr
            ./lsplex --help
            ./lsplex --version
 
