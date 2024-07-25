@@ -12,8 +12,8 @@ public:
   LsContact(std::string exe, std::vector<std::string> args)
       : _exe{std::move(exe)}, _args{std::move(args)} {}  // NOLINT
 
-  [[nodiscard]] std::vector<std::string> args() const { return _args; };
-  [[nodiscard]] std::string exe() const { return _exe; };
+  [[nodiscard]] std::vector<std::string> args() const { return _args; }
+  [[nodiscard]] std::string exe() const { return _exe; }
 
 private:
   std::string _exe;
