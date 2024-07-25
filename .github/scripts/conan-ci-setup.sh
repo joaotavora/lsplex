@@ -20,7 +20,7 @@ set -xeu
 
 conan profile detect -f
 
-std=17
+std=20
 profile="$(conan profile path default)"
 
 mv "$profile" "${profile}.bak"
