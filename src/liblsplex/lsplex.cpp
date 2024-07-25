@@ -21,7 +21,7 @@ namespace bp = boost::process;
 namespace lsplex {
 
 LsPlex::LsPlex(std::vector<LsContact> contacts)
-    : _contacts(std::move(contacts)) {};
+    : _contacts(std::move(contacts)) {}
 
 asio::awaitable<void> transfer(jsonrpc::istream& source,
                                jsonrpc::ostream& sink) {
