@@ -75,6 +75,9 @@ if(NOT CMAKE_SKIP_INSTALL_RULES)
   setup_exe_install(${PROJECT_NAME} TARGETS ${PROJECT_NAME}_exe)
 endif()
 
+include(cmake/compiler-features.cmake)
+include(cmake/compiler-flags.cmake)
+
 # --- Dev cutoff ---
 if(NOT ${PROJECT_NAME}_DEV)
   return()
