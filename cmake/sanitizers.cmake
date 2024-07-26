@@ -62,12 +62,12 @@ if(${_var})
       append("-fsanitize=address" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
     else()
       message(
-        FATAL_ERROR
+        WARNING
           "This sanitizer not yet supported in the MSVC environment: ${${_var}}"
       )
     endif()
   else()
-    message(FATAL_ERROR "${_var} is not supported on this platform.")
+    message(WARNING "${_var} is not supported on this platform.")
   endif()
 
 endif()
