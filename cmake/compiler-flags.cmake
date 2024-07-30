@@ -7,7 +7,26 @@ foreach(target ${LOCAL_TARGETS})
   message(STATUS "Setting up '${target}' compiler quirks")
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES
                                               "GNU")
-    target_compile_options(${target} PUBLIC -Wall -Wpedantic -Wextra -Werror -Wno-sign-conversion)
+    target_compile_options(
+      ${target}
+      PUBLIC -Wall
+             -Wpedantic
+             -Wextra
+             -Werror
+             -fstack-protector-strong
+             -Wcast-qual
+             -Wformat=2
+             -Wundef
+             -Werror=float-equal
+             -Wshadow
+             -Wcast-align
+             -Wnull-dereference
+             -Wdouble-promotion
+             -Wimplicit-fallthrough
+             -Wextra-semi
+             -Woverloaded-virtual
+             -Wnon-virtual-dtor
+             -Wold-style-cast)
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND MINGW)
        target_link_libraries(${target} PRIVATE bcrypt wsock32) # reasons
