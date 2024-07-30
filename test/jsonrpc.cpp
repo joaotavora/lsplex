@@ -1,25 +1,35 @@
 #include <doctest/doctest.h>
-#include <lsplex/jsonrpc.h>
+#include <jsonrpc/jsonrpc.h>
 
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/file_base.hpp>
 #include <boost/asio/posix/stream_descriptor.hpp>
+#include <boost/asio/read_until.hpp>
+#include <boost/asio/readable_pipe.hpp>
+#include <boost/asio/stream_file.hpp>
+#include <boost/asio/streambuf.hpp>
 #include <boost/asio/thread_pool.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/json/object.hpp>
-#include <boost/process/child.hpp>
-#include <boost/process/io.hpp>
-#include <boost/process/pipe.hpp>
+#include <boost/process/v2.hpp>
+#include <boost/process/v2/process.hpp>
+#include <boost/process/v2/stdio.hpp>
+#include <boost/process/search_path.hpp>
 #include <cstdio>
 
+#include "jsonrpc/pal/pal.h"
+
+namespace bp2 = boost::process::v2;
 namespace bp = boost::process;
 namespace asio = boost::asio;
 namespace json = boost::json;
-using asio::posix::stream_descriptor;
 namespace jsonrpc = lsplex::jsonrpc;
 
 TEST_CASE("Get JSON objects from stdin") {
   asio::thread_pool ioc{1};
 
-  jsonrpc::istream is{stream_descriptor{
-      ioc, ::open("resources/jsonrpc_1.txt", O_RDONLY | O_CLOEXEC)}};
+  jsonrpc::istream is{
+      jsonrpc::pal::readable_file{ioc, "resources/jsonrpc_1.txt"}};
   CHECK(is.get() == json::object{{"hello", 42}});
   CHECK(is.get() == json::object{{"hello", 43}});
   CHECK(is.get() == json::object{{"hello", 44}});
@@ -31,16 +41,18 @@ TEST_CASE("Get JSON objects from stdin") {
 TEST_CASE("Get JSON objects from a process's stdout") {
   asio::thread_pool ioc{1};
 
-  bp::pipe child_out;
-  bp::pipe child_in;
+  jsonrpc::istream is{asio::readable_pipe{ioc}};
 
-  child_in.assign_source(::open("resources/jsonrpc_1.txt", O_RDONLY | O_CLOEXEC));
-  // clang-format off
-  bp::child c{"cat", bp::std_out > child_out,
-                     bp::std_in  < child_in,
-                     bp::std_err > stderr};
-  // clang-format on
-  jsonrpc::istream is{stream_descriptor{ioc, child_out.native_source()}};
+  bp2::process proc{
+      ioc,
+#ifdef _MSC_VER
+      bp2::environment::find_executable("more"),
+#else
+      bp2::environment::find_executable("cat"),
+#endif
+      {},
+      bp2::process_stdio{
+          boost::filesystem::path{"resources/jsonrpc_1.txt"}, is.handle(), {}}};
 
   CHECK(is.get() == json::object{{"hello", 42}});
   CHECK(is.get() == json::object{{"hello", 43}});

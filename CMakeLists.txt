@@ -18,8 +18,9 @@ include(cmake/ccache.cmake)
 #
 # There could be more such sections (so _lib1, _lib2 instead of _lib). Note
 # OUTPUT_NAME is 'lsplex' so this will likely become liblsplex.a/so on linux.
-file(GLOB sources CONFIGURE_DEPENDS src/liblsplex/*.cpp)
-add_library(${PROJECT_NAME}_lib ${sources})
+file(GLOB sources1 CONFIGURE_DEPENDS src/liblsplex/*.cpp)
+file(GLOB sources2 CONFIGURE_DEPENDS src/libjsonrpc/*.cpp)
+add_library(${PROJECT_NAME}_lib ${sources1} ${sources2})
 add_library(lsplex::lsplex ALIAS ${PROJECT_NAME}_lib)
 configure_file(include/lsplex/version.h.in include/lsplex/version.h @ONLY)
 
@@ -89,7 +90,7 @@ include(doctest)
 
 file(GLOB sources CONFIGURE_DEPENDS "./test/*.cpp")
 add_executable(${PROJECT_NAME}_tests ${sources})
-target_link_libraries(${PROJECT_NAME}_tests ${PROJECT_NAME}_lib
+target_link_libraries(${PROJECT_NAME}_tests PRIVATE ${PROJECT_NAME}_lib
                       Boost::json Boost::filesystem Boost::boost
                       doctest::doctest)
 

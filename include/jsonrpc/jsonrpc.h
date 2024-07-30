@@ -1,24 +1,62 @@
-#include <fmt/core.h>
-#include <lsplex/jsonrpc.h>
+#pragma once
 
-#include <boost/asio/buffers_iterator.hpp>
-#include <boost/asio/co_spawn.hpp>
-#include <boost/asio/experimental/as_tuple.hpp>
-#include <boost/asio/experimental/awaitable_operators.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/posix/stream_descriptor.hpp>
-#include <boost/asio/read.hpp>
-#include <boost/asio/read_until.hpp>
-#include <boost/asio/streambuf.hpp>
-#include <boost/asio/use_awaitable.hpp>
-#include <boost/asio/use_future.hpp>
-#include <boost/asio/write.hpp>
-#include <boost/json/object.hpp>
-#include <boost/json/parse.hpp>
-#include <boost/json/serialize.hpp>
-#include <boost/type_traits/integral_constant.hpp>
+#include <boost/asio.hpp>
+#include <boost/json.hpp>
 #include <memory_resource>
 #include <regex>
+#include <sstream>
+
+#include "lsplex/export.hpp"
+
+namespace lsplex::jsonrpc {
+
+namespace json = boost::json;
+namespace asio = boost::asio;
+
+/** HTTP-like way to stream in JSON objects from a file descriptor.
+ *
+ *  See https://microsoft.github.io/language-server-protocol/
+ *             specifications/lsp/3.17/specification/#headerPart
+ *
+ * Also FIXME find better name for this.
+ */
+template <typename Readable> LSPLEX_EXPORT class istream {
+  Readable _in;
+  asio::streambuf _header_buf{30};
+  std::vector<char> _msg_buf;
+
+public:
+  LSPLEX_EXPORT Readable& handle() { return _in; }
+  LSPLEX_EXPORT explicit istream(Readable d) : _in{std::move(d)} {}
+  LSPLEX_EXPORT asio::awaitable<json::object> async_get();
+  LSPLEX_EXPORT [[nodiscard]] json::object get() {
+    return asio::co_spawn(_in.get_executor(), async_get(), asio::use_future)
+        .get();
+  }
+};
+
+/** HTTP-like way to stream out JSON objects to a file descriptor.
+ *
+ *  See https://microsoft.github.io/language-server-protocol/
+ *             specifications/lsp/3.17/specification/#headerPart
+ *
+ * Also FIXME find better name for this.
+ */
+template <typename Writeable> LSPLEX_EXPORT class ostream {
+  Writeable _out;
+
+public:
+  LSPLEX_EXPORT Writeable& handle() { return _out; }
+  LSPLEX_EXPORT explicit ostream(Writeable d) : _out{std::move(d)} {}
+  LSPLEX_EXPORT asio::awaitable<void> async_put(const json::object& o);
+  LSPLEX_EXPORT void put(const json::object& o) {
+    return asio::co_spawn(_out.get_executor(), async_put(o), asio::use_future)
+        .get();
+  }
+};
+}  // namespace lsplex::jsonrpc
+
+// Implementation: maybe move this to a different file
 
 namespace lsplex::jsonrpc::detail {
 
@@ -32,7 +70,7 @@ struct parse_state {
 };
 
 struct parse_mandatory_headers {
-  explicit parse_mandatory_headers(parse_state* pstate) : pstate(pstate) {}
+  explicit parse_mandatory_headers(parse_state* ps) : pstate(ps) {}
   parse_state* pstate;
   using It = asio::buffers_iterator<asio::streambuf::const_buffers_type>;
 
@@ -95,10 +133,10 @@ struct is_match_condition<lsplex::jsonrpc::detail::parse_mandatory_headers>
 
 namespace lsplex::jsonrpc {
 
-constexpr auto use_nothrow_awaitable
-    = asio::experimental::as_tuple(asio::use_awaitable);
+constexpr auto use_nothrow_awaitable = asio::as_tuple(asio::use_awaitable);
 
-[[nodiscard]] asio::awaitable<json::object> istream::async_get() {
+template <typename Readable>
+[[nodiscard]] asio::awaitable<json::object> istream<Readable>::async_get() {
   detail::parse_state state;
 again:
   auto [ec, read] = co_await asio::async_read_until(
@@ -137,11 +175,12 @@ again:
       .as_object();
 }
 
-asio::awaitable<void> ostream::async_put(const json::object& o) {
+template <typename Writable>
+asio::awaitable<void> ostream<Writable>::async_put(const json::object& o) {
   const auto s = json::serialize(o);  // FIXME: find a more eff
-  const auto header = fmt::format("Content-Length: {}\r\n\r\n", s.size());
-
-  co_await asio::async_write(_out, asio::buffer(header), asio::use_awaitable);
+  std::stringstream header;
+  header << "Content-Length: " << s.size() << "\r\n\r\n";
+  co_await asio::async_write(_out, asio::buffer(header.str()), asio::use_awaitable);
   co_await asio::async_write(_out, asio::buffer(s), asio::use_awaitable);
   co_return;
 }

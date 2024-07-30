@@ -8,6 +8,10 @@ foreach(target ${LOCAL_TARGETS})
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES
                                               "GNU")
     target_compile_options(${target} PUBLIC -Wall -Wpedantic -Wextra -Werror -Wno-sign-conversion)
+
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND MINGW)
+       target_link_libraries(${target} PRIVATE bcrypt wsock32) # reasons
+     endif()
   elseif(MSVC)
     target_compile_options(${target} PUBLIC /W4 /WX)
     target_compile_definitions(${target} PUBLIC DOCTEST_CONFIG_USE_STD_HEADERS)
