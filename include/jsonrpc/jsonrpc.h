@@ -89,15 +89,16 @@ struct parse_mandatory_headers {
           pstate->at_eol = false;
           return std::make_pair(begin, false);
         }
-        pstate->consume = eol_probe - begin;
+        pstate->consume = static_cast<size_t>(eol_probe - begin);
         eol_probe++;
       }
 
-      pstate->consume = eol_probe - begin;
+      pstate->consume = static_cast<size_t>(eol_probe - begin);
 
-      if (pstate->content_length != 0         // If got mandatory header
-          && pstate->at_eol                   // and last saw a complete line
-          && eol_probe - eol.size() == begin  // and looking at another CRLF...
+      if (pstate->content_length != 0  // If got mandatory header
+          && pstate->at_eol            // and last saw a complete line
+          && eol_probe - static_cast<ptrdiff_t>(eol.size())
+                 == begin              // and looking at another CRLF...
       ) {
         // ...we're about done!
         return std::make_pair(eol_probe, true);
@@ -115,7 +116,8 @@ struct parse_mandatory_headers {
         if (std::equal(match[1].first, match[1].second, magic.begin())) {
           for (It cp = match[2].first;
                cp != match[2].second && static_cast<bool>(isdigit(*cp)); ++cp)
-            pstate->content_length = pstate->content_length * 10 + (*cp - '0');
+            pstate->content_length
+                = pstate->content_length * 10 + static_cast<size_t>(*cp - '0');
         }
       }
       begin = eol_probe;
@@ -161,10 +163,11 @@ again:
 
   auto sz = _header_buf.size();
   auto from = asio::buffers_begin(_header_buf.data());
-  auto to = from + std::min(state.content_length, sz);  // NOLINT(*-narrowing-*)
+  auto to
+      = from + static_cast<std::ptrdiff_t>(std::min(state.content_length, sz));
 
   std::copy(from, to, _msg_buf.data());
-  _header_buf.consume(to - from);
+  _header_buf.consume(static_cast<size_t>(to - from));
 
   if (sz < state.content_length)
     co_await asio::async_read(
@@ -180,7 +183,8 @@ asio::awaitable<void> ostream<Writable>::async_put(const json::object& o) {
   const auto s = json::serialize(o);  // FIXME: find a more eff
   std::stringstream header;
   header << "Content-Length: " << s.size() << "\r\n\r\n";
-  co_await asio::async_write(_out, asio::buffer(header.str()), asio::use_awaitable);
+  co_await asio::async_write(_out, asio::buffer(header.str()),
+                             asio::use_awaitable);
   co_await asio::async_write(_out, asio::buffer(s), asio::use_awaitable);
   co_return;
 }
