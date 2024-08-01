@@ -14,7 +14,9 @@ foreach(target ${LOCAL_TARGETS})
              -Wextra
              -Werror
              -fstack-protector-strong
-             -Wcast-qual
+             -Wsign-conversion
+             -Wconversion
+             -Wunused-result
              -Wformat=2
              -Wundef
              -Werror=float-equal
