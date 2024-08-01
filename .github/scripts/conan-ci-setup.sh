@@ -10,6 +10,7 @@
 PS4='\033[1;34m>>>\033[0m '
 
 set -xeuf
+set -o noglob
 
 conan profile detect -f
 
