@@ -45,9 +45,9 @@ inline std::string get_error_msg(const std::string& msg) {
 
 }  // namespace detail
 
-struct readable_file : boost::asio::readable_pipe {
+struct readable_file : readable_pipe {
   template <typename Executor>
-  readable_file(Executor&& ex, const std::string& path) :
+  explicit readable_file (const std::string& path) :
     readable_pipe{std::forward<Executor>(ex)} {
     detail::fd file_fd{ ::open(path.c_str(), O_RDONLY | O_CLOEXEC)};
     if (file_fd == -1)
