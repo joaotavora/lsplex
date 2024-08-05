@@ -52,7 +52,7 @@ coverage: check-coverage
 
 run-%: configure-% phony
 	cmake --build build/$* --target LsPlex_exe
-	build/$*/lsplex --version
+	build/$*/lsplex cat < test/resources/justonemessage.txt
 
 clean: phony
 	rm -rf build*

@@ -4,6 +4,8 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/experimental/awaitable_operators.hpp>
+#include <boost/asio/use_awaitable.hpp>
+#include <boost/json/serialize.hpp>
 #include <boost/process/v2.hpp>
 #include <boost/process/v2/environment.hpp>
 #include <stdexcept>
@@ -28,14 +30,15 @@ asio::awaitable<void> transfer(Source& source, Sink& sink) {
   }
 }
 
-template <typename A, typename B, typename C, typename D>
-asio::awaitable<void> doit(jsonrpc::istream<A>& our_stdin,
-                           jsonrpc::ostream<B>& our_stdout,
-                           jsonrpc::ostream<C>& child_stdin,
-                           jsonrpc::istream<D>& child_stdout) {
+asio::awaitable<void> doit(auto& our_stdin,
+                           auto& our_stdout,
+                           auto& child_stdin,
+                           auto& child_stdout,
+                           auto& child_proc) {
   using namespace asio::experimental::awaitable_operators;  // NOLINT
   co_await (transfer(our_stdin, child_stdin)
-            || transfer(child_stdout, our_stdout));
+            || transfer(child_stdout, our_stdout)
+            || child_proc.async_wait(boost::asio::use_awaitable));
 }
 
 void LsPlex::start() {
@@ -62,7 +65,7 @@ void LsPlex::start() {
       ioc, exe, contact.args(),
       bp2::process_stdio{child_in.handle(), child_out.handle(), {}}};
 
-  asio::co_spawn(ioc, doit(our_stdin, our_stdout, child_in, child_out),
+  asio::co_spawn(ioc, doit(our_stdin, our_stdout, child_in, child_out, proc),
                  asio::detached);
   ioc.run();
   fmt::println(stderr, "You shouldn't be seeing this");
