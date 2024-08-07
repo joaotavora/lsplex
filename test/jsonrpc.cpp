@@ -14,13 +14,11 @@
 #include <boost/process/v2.hpp>
 #include <boost/process/v2/process.hpp>
 #include <boost/process/v2/stdio.hpp>
-#include <boost/process/search_path.hpp>
 #include <cstdio>
 
 #include "jsonrpc/pal/pal.h"
 
 namespace bp2 = boost::process::v2;
-namespace bp = boost::process;
 namespace asio = boost::asio;
 namespace json = boost::json;
 namespace jsonrpc = lsplex::jsonrpc;
