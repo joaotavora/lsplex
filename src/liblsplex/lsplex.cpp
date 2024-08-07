@@ -5,6 +5,7 @@
 #include <boost/asio.hpp>
 #include <boost/asio/experimental/awaitable_operators.hpp>
 #include <boost/asio/use_awaitable.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <boost/json/serialize.hpp>
 #include <boost/process/v2.hpp>
 #include <boost/process/v2/environment.hpp>
@@ -14,30 +15,30 @@
 #include "jsonrpc/pal/pal.h"
 
 namespace asio = boost::asio;
-namespace bp = boost::process;
 namespace bp2 = boost::process::v2;
+namespace fs = boost::filesystem;
 
 namespace lsplex {
 
 LsPlex::LsPlex(std::vector<LsContact> contacts)
     : _contacts(std::move(contacts)) {}
 
+enum class direction { client2server, server2client };
+
 template <typename Source, typename Sink>
-asio::awaitable<void> transfer(Source& source, Sink& sink) {
+asio::awaitable<void> transfer(Source& source, Sink& sink,
+                               [[maybe_unused]] direction d) {
   for (;;) {
     auto object = co_await source.async_get();
     co_await sink.async_put(object);
   }
 }
 
-asio::awaitable<void> doit(auto& our_stdin,
-                           auto& our_stdout,
-                           auto& child_stdin,
-                           auto& child_stdout,
-                           auto& child_proc) {
+asio::awaitable<void> doit(auto& our_stdin, auto& our_stdout, auto& child_stdin,
+                           auto& child_stdout, auto& child_proc) {
   using namespace asio::experimental::awaitable_operators;  // NOLINT
-  co_await (transfer(our_stdin, child_stdin)
-            || transfer(child_stdout, our_stdout)
+  co_await (transfer(our_stdin, child_stdin, direction::client2server)
+            || transfer(child_stdout, our_stdout, direction::server2client)
             || child_proc.async_wait(boost::asio::use_awaitable));
 }
 
@@ -54,15 +55,24 @@ void LsPlex::start() {
   jsonrpc::istream our_stdin{jsonrpc::pal::asio_stdin{ioc}};
   jsonrpc::ostream our_stdout{jsonrpc::pal::asio_stdout{ioc}};
 
-  auto exe = bp2::environment::find_executable(contact.exe());
-  if (exe.empty())
-    throw std::runtime_error(fmt::format("Can't find {}", contact.exe()));
+  fs::path resolved{};
+
+  if (fs::exists(contact.exe())) {
+    fmt::println("Found '{}'", contact.exe());
+    resolved = contact.exe();
+  } else if (fs::path(contact.exe()).parent_path().empty()) {
+    fmt::println("Looking for '{}' in PATH", contact.exe());
+    resolved = bp2::environment::find_executable(contact.exe());
+  }
+
+  if (resolved.empty())
+    throw std::runtime_error(fmt::format("Can't find '{}'", contact.exe()));
 
   jsonrpc::istream child_out{asio::readable_pipe{ioc}};
   jsonrpc::ostream child_in{asio::writable_pipe{ioc}};
 
   bp2::process proc{
-      ioc, exe, contact.args(),
+      ioc, resolved, contact.args(),
       bp2::process_stdio{child_in.handle(), child_out.handle(), {}}};
 
   asio::co_spawn(ioc, doit(our_stdin, our_stdout, child_in, child_out, proc),
