@@ -93,6 +93,10 @@ add_executable(${PROJECT_NAME}_tests ${sources})
 target_link_libraries(${PROJECT_NAME}_tests PRIVATE ${PROJECT_NAME}_lib
                       Boost::json Boost::filesystem Boost::boost
                       doctest::doctest)
+if(WIN32)
+  add_executable(${PROJECT_NAME}_wincat test/wincat/wincat.cpp)
+  set_property(TARGET ${PROJECT_NAME}_wincat PROPERTY OUTPUT_NAME wincat)
+endif()
 
 file(COPY test/resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
