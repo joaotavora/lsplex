@@ -7,13 +7,12 @@
 int main(int argc, char* argv[]) {
   cxxopts::Options options(*argv, "A language server proxy");
   // clang-format off
-  options.add_options()
+  options.positional_help("-- PROGRAM PROGRAM-ARGS...")
+         .add_options()
     ("h,help", "Show help")
     ("v,version", "Print the current version number")
     ("program", "The primary LS program to run", cxxopts::value<std::string>())
     ("program-args", "The primary LS args", cxxopts::value<std::vector<std::string>>()->default_value({}));
-
-  ;
   // clang-format on
 
   options.parse_positional({"program", "program-args"});
@@ -35,8 +34,8 @@ int main(int argc, char* argv[]) {
 
   auto program = result["program"].as<std::string>();
   auto args = result["program-args"].as<std::vector<std::string>>();
-  args.erase(args.begin()); // because cxxopts reasons
+  args.erase(args.begin());  // because cxxopts reasons
 
-  lsplex::LsPlex lsplex({lsplex::LsContact{program,args}});
+  lsplex::LsPlex lsplex({lsplex::LsContact{program, args}});
   lsplex.start();
 }
