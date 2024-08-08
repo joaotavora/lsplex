@@ -38,8 +38,16 @@ asio::awaitable<void> doit(auto& our_stdin, auto& our_stdout, auto& child_stdin,
                            auto& child_stdout, auto& child_proc) {
   using namespace asio::experimental::awaitable_operators;  // NOLINT
   co_await (transfer(our_stdin, child_stdin, direction::client2server)
-            || transfer(child_stdout, our_stdout, direction::server2client)
-            || child_proc.async_wait(boost::asio::use_awaitable));
+            && transfer(child_stdout, our_stdout, direction::server2client));
+  // In theory, we should be able to wait also on the child process in
+  // this && chain, but we cant' because per-op cancellation is _not_
+  // supported on Windows for asio::windows::basic_object_handle
+  // (according to Klemens Morgenstern).  So we close the processe's
+  // stdin handle which should be enough to convince it to kill
+  // itself.
+  child_stdin.handle().close();
+  auto ret = co_await child_proc.async_wait(boost::asio::use_awaitable);
+  fmt::println("Process existed with '{}'", ret);
 }
 
 void LsPlex::start() {
@@ -78,7 +86,6 @@ void LsPlex::start() {
   asio::co_spawn(ioc, doit(our_stdin, our_stdout, child_in, child_out, proc),
                  asio::detached);
   ioc.run();
-  fmt::println(stderr, "You shouldn't be seeing this");
 }
 
 }  // namespace lsplex
