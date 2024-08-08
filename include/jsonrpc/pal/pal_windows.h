@@ -55,19 +55,22 @@ struct asio_stdin : readable_pipe {
       std::array<char, 1024> buffer{};
 
       for (;;) {
-        DWORD bytes_read = 0;
-        BOOL result
-            = ReadFile(h, buffer.data(), buffer.size(), &bytes_read, nullptr);
-        if (!result) {
+        DWORD bread = 0;
+        BOOL res
+          = ReadFile(h, buffer.data(), buffer.size(), &bread, nullptr);
+        if (res && bread == 0) {
+          wp.close();
+          break;
+        }
+        if (!res) {
           if (::GetLastError() == ERROR_BROKEN_PIPE) {
-            fmt::println(stderr, "stdin closed");
             wp.close();
             break;
           }
           auto msg = detail::get_error_msg("ReadFile() failed");
           throw std::runtime_error(msg);
         }
-        asio::write(wp, asio::buffer(buffer.data(), bytes_read));
+        asio::write(wp, asio::buffer(buffer.data(), bread));
       }
     }).detach();
   }
@@ -90,12 +93,21 @@ struct asio_stdout : writable_pipe {
 
       for (;;) {
         auto bread
-            = asio::read(rp, asio::buffer(buffer.data(), buffer.size()), ec);
+            = rp.read_some(asio::buffer(buffer.data(), buffer.size()), ec);
         if (!ec) {
-          boost::winapi::WriteFile(h, buffer.data(), static_cast<DWORD>(bread),
-                                   nullptr, nullptr);
+          auto to_write = bread;
+          while (to_write > 0) {
+            DWORD written = 0;
+            BOOL result = boost::winapi::WriteFile(
+                h, buffer.data() + written,
+                static_cast<DWORD>(to_write - written), &written, nullptr);
+            to_write -= written;
+            if (!result)
+              throw std::runtime_error(
+                  detail::get_error_msg("WriteFile() failed"));
+          }
         } else if (ec == asio::error::eof) {
-          fmt::println(stderr, "child stdout closed");
+          // fmt::println(stderr, "child stdout closed");
           break;
         } else
           throw std::runtime_error(
