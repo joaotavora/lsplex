@@ -5,7 +5,9 @@
 #include <boost/asio.hpp>
 #include <boost/asio/experimental/awaitable_operators.hpp>
 #include <boost/asio/use_awaitable.hpp>
+#include <boost/exception/exception.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/json/object.hpp>
 #include <boost/json/serialize.hpp>
 #include <boost/process/v2.hpp>
 #include <boost/process/v2/environment.hpp>
@@ -25,9 +27,8 @@ LsPlex::LsPlex(std::vector<LsContact> contacts)
 
 enum class direction { client2server, server2client };
 
-template <typename Source, typename Sink>
-asio::awaitable<void> transfer(Source& source, Sink& sink,
-                               [[maybe_unused]] direction d) {
+template <direction d, typename Source, typename Sink>
+asio::awaitable<void> transfer(Source& source, Sink& sink) {
   for (;;) {
     auto object = co_await source.async_get();
     co_await sink.async_put(object);
@@ -36,9 +37,10 @@ asio::awaitable<void> transfer(Source& source, Sink& sink,
 
 asio::awaitable<void> doit(auto& our_stdin, auto& our_stdout, auto& child_stdin,
                            auto& child_stdout, auto& child_proc) {
-  using namespace asio::experimental::awaitable_operators;  // NOLINT
-  co_await (transfer(our_stdin, child_stdin, direction::client2server)
-            && transfer(child_stdout, our_stdout, direction::server2client));
+  try {
+    using namespace asio::experimental::awaitable_operators;  // NOLINT
+    co_await (transfer<direction::client2server>(our_stdin, child_stdin)
+            && transfer<direction::server2client>(child_stdout, our_stdout));
   // In theory, we should be able to wait also on the child process in
   // this && chain, but we cant' because per-op cancellation is _not_
   // supported on Windows for asio::windows::basic_object_handle
@@ -47,7 +49,10 @@ asio::awaitable<void> doit(auto& our_stdin, auto& our_stdout, auto& child_stdin,
   // itself.
   child_stdin.handle().close();
   auto ret = co_await child_proc.async_wait(boost::asio::use_awaitable);
-  fmt::println("Process existed with '{}'", ret);
+  fmt::println("Process exited with '{}'", ret);
+  } catch (std::exception& e) {
+    fmt::println(stderr, "Exception: {}", e.what());
+  }
 }
 
 void LsPlex::start() {
