@@ -92,7 +92,7 @@ file(GLOB sources CONFIGURE_DEPENDS "./test/*.cpp")
 add_executable(${PROJECT_NAME}_tests ${sources})
 target_link_libraries(${PROJECT_NAME}_tests PRIVATE ${PROJECT_NAME}_lib
                       Boost::json Boost::filesystem Boost::boost
-                      doctest::doctest)
+                      doctest::doctest fmt::fmt)
 if(WIN32)
   add_executable(${PROJECT_NAME}_wincat test/wincat/wincat.cpp)
   target_link_libraries(${PROJECT_NAME}_wincat PRIVATE fmt::fmt)
