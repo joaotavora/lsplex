@@ -81,10 +81,10 @@ TEST_CASE("Loop a single JSON message fully through LsPlex") {
 
   std::stringstream buffer;
   {
-    std::ifstream file{"resources/twomessages.txt", std::ios::binary};
+    std::ifstream file{"resources/well_behaved_messages.txt", std::ios::binary};
     buffer << file.rdbuf();
   }
-  redirector r{"resources/twomessages.txt"};
+  redirector r{"resources/well_behaved_messages.txt"};
   std::thread th{[]{
     lsplex::LsContact contact{"./wincat.exe", {}};
     lsplex::LsPlex plex{{contact}};

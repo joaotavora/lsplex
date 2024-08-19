@@ -35,6 +35,7 @@ asio::awaitable<void> transfer(Source& source, Sink& sink) {
     for (;;) {
       auto object = co_await source.async_get(boost::asio::use_awaitable);
       co_await sink.async_put(object, boost::asio::use_awaitable);
+      fmt::println(stderr, "One object successfully transferred direction {}", dir);
     }
   } catch (std::exception& e) {
     fmt::println(stderr, "Exception in direction {}: {}", dir, e.what());
