@@ -24,7 +24,11 @@ TEST_CASE("Loop some well behaved messages fully through LsPlex") {
   }
   lsplex::jsonrpc::pal::redirector r{"resources/well_behaved_messages.txt"};
   std::thread th{[]{
+#if defined(_MSC_VER) || defined(__MINGW64__)
     lsplex::LsContact contact{"./wincat.exe", {}};
+#else
+    lsplex::LsContact contact{"cat", {}};
+#endif
     lsplex::LsPlex plex{{contact}};
     plex.start();
   }};
