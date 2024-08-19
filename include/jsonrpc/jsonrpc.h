@@ -20,7 +20,7 @@ struct parse_state {
   bool at_eol{false};
   size_t consume{0};
 };
-} // namespace detail
+}  // namespace detail
 
 /** HTTP-like way to stream in JSON objects from a file descriptor.
  *
@@ -53,6 +53,7 @@ public:
  */
 template <typename Writeable> LSPLEX_EXPORT class ostream {
   Writeable _out;
+  std::string _out_buf;
 
 public:
   LSPLEX_EXPORT Writeable& handle() { return _out; }
@@ -138,65 +139,66 @@ template <typename Readable> struct read_op {
                                            boost::system::error_code ec = {},
                                            std::size_t bread = 0) {
     switch (stage) {
-    case starting: {
-      state = {};
-    again:
-      stage = reading_header;
-      asio::async_read_until(in, header_buf, detail::parse_mandatory_headers{&state}, std::move(self));
-      return;
-    }
-    case reading_header: {
-      
-      if (ec) {
-        if (ec == asio::error::misc_errors::not_found) {
-          header_buf.consume(state.consume > 0 ? state.consume
-                             : header_buf.size());
-          state.consume = 0;
-          goto again; //NOLINT
+      case starting: {
+        state = {};
+      again:
+        stage = reading_header;
+        asio::async_read_until(in, header_buf,
+                               detail::parse_mandatory_headers{&state},
+                               std::move(self));
+        return;
+      }
+      case reading_header: {
+        if (ec) {
+          if (ec == asio::error::misc_errors::not_found) {
+            header_buf.consume(state.consume > 0 ? state.consume
+                                                 : header_buf.size());
+            state.consume = 0;
+            goto again;  // NOLINT
+          }
+          header_buf.consume(header_buf.size());
+          self.complete(ec, {});
+          return;
         }
-        header_buf.consume(header_buf.size());
-        self.complete(ec, {});
-        return;
-      }
-      header_buf.consume(bread);
-      msg_buf.clear();
-      msg_buf.resize(state.content_length);
-      auto sz = header_buf.size();
-      auto from = asio::buffers_begin(header_buf.data());
-      auto to
-        = from
-          + static_cast<std::ptrdiff_t>(std::min(state.content_length, sz));
-      std::copy(from, to, msg_buf.data());
-      header_buf.consume(static_cast<size_t>(to - from));
+        header_buf.consume(bread);
+        msg_buf.clear();
+        msg_buf.resize(state.content_length);
+        auto sz = header_buf.size();
+        auto from = asio::buffers_begin(header_buf.data());
+        auto to
+            = from
+              + static_cast<std::ptrdiff_t>(std::min(state.content_length, sz));
+        std::copy(from, to, msg_buf.data());
+        header_buf.consume(static_cast<size_t>(to - from));
 
-      if (sz < state.content_length) {
-        stage = reading_body;
-        asio::async_read(
-            in, asio::buffer(&msg_buf[sz], state.content_length - sz),
-            std::move(self));
-        return;
+        if (sz < state.content_length) {
+          stage = reading_body;
+          asio::async_read(
+              in, asio::buffer(&msg_buf[sz], state.content_length - sz),
+              std::move(self));
+          return;
+        }
+        goto done;  // NOLINT
       }
-      goto done; // NOLINT
-    }
-    case reading_body: {
-      if (ec) {
-        self.complete(ec, {});
-        return;
-      }
-    done:
-      self.complete(
-          {}, json::parse(std::string_view{msg_buf.data(), msg_buf.size()})
+      case reading_body: {
+        if (ec) {
+          self.complete(ec, {});
+          return;
+        }
+      done:
+        self.complete(
+            {}, json::parse(std::string_view{msg_buf.data(), msg_buf.size()})
                     .as_object());
-    }
+      }
     }
   }
 };
 
 template <typename Writable> struct write_op {
-  Writable& out;  // NOLINT
+  Writable& out;          // NOLINT
   const json::object& o;  // NOLINT
+  std::string& out_buf;   // NOLINT
 
-  std::string s = json::serialize(o);
   enum { starting, writing_header, writing_body } stage = starting;
 
   template <typename Self>
@@ -204,8 +206,9 @@ template <typename Writable> struct write_op {
                   [[maybe_unused]] size_t written = 0) {
     switch (stage) {
       case starting: {
+        out_buf = json::serialize(o);
         std::stringstream header;
-        header << "Content-Length: " << s.size() << "\r\n\r\n";
+        header << "Content-Length: " << out_buf.size() << "\r\n\r\n";
         stage = writing_header;
         asio::async_write(out, asio::buffer(header.str()), std::move(self));
         return;
@@ -216,7 +219,7 @@ template <typename Writable> struct write_op {
           return;
         }
         stage = writing_body;
-        asio::async_write(out, asio::buffer(s), std::move(self));
+        asio::async_write(out, asio::buffer(out_buf), std::move(self));
         return;
       }
       case writing_body: {
@@ -249,6 +252,6 @@ template <typename Writable> template <typename Token>
 [[nodiscard]] auto ostream<Writable>::async_put(const json::object& o,
                                                 Token&& tok) {
   return asio::async_compose<Token, void(boost::system::error_code)>(
-      detail::write_op{_out, o}, tok, _out);
+      detail::write_op{_out, o, _out_buf}, tok, _out);
 }
 }  // namespace lsplex::jsonrpc
