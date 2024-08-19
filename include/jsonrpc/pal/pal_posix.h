@@ -9,6 +9,11 @@
 #include <stdexcept>
 #include <thread>
 
+#include <unistd.h>
+#include <fcntl.h>
+#include <string>
+#include <vector>
+
 namespace lsplex::jsonrpc::pal {
 
 namespace asio = boost::asio;
@@ -47,7 +52,7 @@ inline std::string get_error_msg(const std::string& msg) {
 
 struct readable_file : readable_pipe {
   template <typename Executor>
-  explicit readable_file (const std::string& path) :
+  explicit readable_file (Executor&& ex, const std::string& path) :
     readable_pipe{std::forward<Executor>(ex)} {
     detail::fd file_fd{ ::open(path.c_str(), O_RDONLY | O_CLOEXEC)};
     if (file_fd == -1)
@@ -82,5 +87,63 @@ struct asio_stdout : stream_descriptor {
   template <typename Executor> explicit asio_stdout(Executor&& ex) // NOLINT
       : stream_descriptor{std::forward<Executor>(ex),
                           fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC)} {}
+};
+
+class redirector {
+public:
+  redirector(const redirector &) = delete;
+  redirector(redirector &&) = delete;
+  redirector &operator=(const redirector &) = delete;
+  redirector &operator=(redirector &&) = delete;
+
+  explicit redirector(const std::string &inputFile)
+      : orig_stdin{dup(STDIN_FILENO)}, orig_stdout{dup(STDOUT_FILENO)},
+        file{open(inputFile.c_str(), O_RDONLY)} {
+    if (file == -1)
+      throw std::runtime_error("Failed to open input file");
+
+    if (dup2(file, STDIN_FILENO) == -1)
+      throw std::runtime_error("Failed to redirect stdin");
+
+    if (pipe(pipe_fd) == -1)
+      throw std::runtime_error("Failed to create pipe");
+
+    if (dup2(pipe_fd[1], STDOUT_FILENO) == -1)
+      throw std::runtime_error("Failed to redirect stdout");
+
+    // Close the write end of the pipe in the parent process
+    close(pipe_fd[1]);
+  }
+
+  ~redirector() {
+    // Restore the original stdin and stdout file descriptors
+    dup2(orig_stdin, STDIN_FILENO);
+    dup2(orig_stdout, STDOUT_FILENO);
+
+    // Close the original and new file descriptors
+    close(orig_stdin);
+    close(orig_stdout);
+    close(file);
+    close(pipe_fd[0]);
+  }
+
+  std::string slurp() {
+    std::vector<char> buffer(1024);
+    std::string output;
+    ssize_t bytesRead;
+
+    // Read the contents of the read end of the pipe
+    while ((bytesRead = read(pipe_fd[0], buffer.data(), buffer.size())) > 0) {
+      output.append(buffer.data(), bytesRead);
+    }
+
+    return output;
+  }
+
+private:
+  int orig_stdin;
+  int orig_stdout;
+  int file;
+  int pipe_fd[2]; // [0] is the read end, [1] is the write end
 };
 }  // namespace lsplex::jsonrpc::pal
