@@ -30,8 +30,8 @@ enum class direction { client2server, server2client };
 template <direction d, typename Source, typename Sink>
 asio::awaitable<void> transfer(Source& source, Sink& sink) {
   for (;;) {
-    auto object = co_await source.async_get();
-    co_await sink.async_put(object);
+    auto object = co_await source.async_get(boost::asio::use_awaitable);
+    co_await sink.async_put(object, boost::asio::use_awaitable);
   }
 }
 

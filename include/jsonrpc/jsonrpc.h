@@ -13,6 +13,15 @@ namespace lsplex::jsonrpc {
 namespace json = boost::json;
 namespace asio = boost::asio;
 
+namespace detail {
+struct parse_state {
+  size_t content_length = 0;
+  size_t erledigt = 0;
+  bool at_eol{false};
+  size_t consume{0};
+};
+} // namespace detail
+
 /** HTTP-like way to stream in JSON objects from a file descriptor.
  *
  *  See https://microsoft.github.io/language-server-protocol/
@@ -24,14 +33,14 @@ template <typename Readable> LSPLEX_EXPORT class istream {
   Readable _in;
   asio::streambuf _header_buf{30};
   std::vector<char> _msg_buf;
+  detail::parse_state _state;
 
 public:
   LSPLEX_EXPORT Readable& handle() { return _in; }
   LSPLEX_EXPORT explicit istream(Readable d) : _in{std::move(d)} {}
-  LSPLEX_EXPORT asio::awaitable<json::object> async_get();
+  template <typename Token> LSPLEX_EXPORT auto async_get(Token&& tok);
   LSPLEX_EXPORT [[nodiscard]] json::object get() {
-    return asio::co_spawn(_in.get_executor(), async_get(), asio::use_future)
-        .get();
+    return async_get(asio::use_future).get();
   }
 };
 
@@ -48,10 +57,10 @@ template <typename Writeable> LSPLEX_EXPORT class ostream {
 public:
   LSPLEX_EXPORT Writeable& handle() { return _out; }
   LSPLEX_EXPORT explicit ostream(Writeable d) : _out{std::move(d)} {}
-  LSPLEX_EXPORT asio::awaitable<void> async_put(const json::object& o);
+  template <typename Token>
+  LSPLEX_EXPORT auto async_put(const json::object& o, Token&& tok);
   LSPLEX_EXPORT void put(const json::object& o) {
-    return asio::co_spawn(_out.get_executor(), async_put(o), asio::use_future)
-        .get();
+    async_put(o, asio::use_future).get();
   }
 };
 }  // namespace lsplex::jsonrpc
@@ -62,15 +71,7 @@ namespace lsplex::jsonrpc::detail {
 
 namespace asio = boost::asio;
 
-struct parse_state {
-  size_t content_length = 0;
-  size_t erledigt = 0;
-  bool at_eol{false};
-  size_t consume{0};
-};
-
 struct parse_mandatory_headers {
-  explicit parse_mandatory_headers(parse_state* ps) : pstate(ps) {}
   parse_state* pstate;
   using It = asio::buffers_iterator<asio::streambuf::const_buffers_type>;
 
@@ -98,7 +99,7 @@ struct parse_mandatory_headers {
       if (pstate->content_length != 0  // If got mandatory header
           && pstate->at_eol            // and last saw a complete line
           && eol_probe - static_cast<ptrdiff_t>(eol.size())
-                 == begin              // and looking at another CRLF...
+                 == begin  // and looking at another CRLF...
       ) {
         // ...we're about done!
         return std::make_pair(eol_probe, true);
@@ -125,6 +126,110 @@ struct parse_mandatory_headers {
   }
 };
 
+template <typename Readable> struct read_op {
+  Readable& in;                 // NOLINT
+  asio::streambuf& header_buf;  // NOLINT
+  std::vector<char>& msg_buf;   // NOLINT
+  detail::parse_state& state;   // NOLINT
+  enum { starting, reading_header, reading_body } stage = starting;
+  detail::parse_mandatory_headers parser{};
+
+  template <typename Self> void operator()(Self& self,
+                                           boost::system::error_code ec = {},
+                                           std::size_t bread = 0) {
+    switch (stage) {
+    case starting: {
+      state = {};
+    again:
+      stage = reading_header;
+      asio::async_read_until(in, header_buf, detail::parse_mandatory_headers{&state}, std::move(self));
+      return;
+    }
+    case reading_header: {
+      
+      if (ec) {
+        if (ec == asio::error::misc_errors::not_found) {
+          header_buf.consume(state.consume > 0 ? state.consume
+                             : header_buf.size());
+          state.consume = 0;
+          goto again; //NOLINT
+        }
+        header_buf.consume(header_buf.size());
+        self.complete(ec, {});
+        return;
+      }
+      header_buf.consume(bread);
+      msg_buf.clear();
+      msg_buf.resize(state.content_length);
+      auto sz = header_buf.size();
+      auto from = asio::buffers_begin(header_buf.data());
+      auto to
+        = from
+          + static_cast<std::ptrdiff_t>(std::min(state.content_length, sz));
+      std::copy(from, to, msg_buf.data());
+      header_buf.consume(static_cast<size_t>(to - from));
+
+      if (sz < state.content_length) {
+        stage = reading_body;
+        asio::async_read(
+            in, asio::buffer(&msg_buf[sz], state.content_length - sz),
+            std::move(self));
+        return;
+      }
+      goto done; // NOLINT
+    }
+    case reading_body: {
+      if (ec) {
+        self.complete(ec, {});
+        return;
+      }
+    done:
+      self.complete(
+          {}, json::parse(std::string_view{msg_buf.data(), msg_buf.size()})
+                    .as_object());
+    }
+    }
+  }
+};
+
+template <typename Writable> struct write_op {
+  Writable& out;  // NOLINT
+  const json::object& o;  // NOLINT
+
+  std::string s = json::serialize(o);
+  enum { starting, writing_header, writing_body } stage = starting;
+
+  template <typename Self>
+  void operator()(Self& self, boost::system::error_code ec = {},
+                  [[maybe_unused]] size_t written = 0) {
+    switch (stage) {
+      case starting: {
+        std::stringstream header;
+        header << "Content-Length: " << s.size() << "\r\n\r\n";
+        stage = writing_header;
+        asio::async_write(out, asio::buffer(header.str()), std::move(self));
+        return;
+      }
+      case writing_header: {
+        if (ec) {
+          self.complete(ec);
+          return;
+        }
+        stage = writing_body;
+        asio::async_write(out, asio::buffer(s), std::move(self));
+        return;
+      }
+      case writing_body: {
+        if (ec) {
+          self.complete(ec);
+          return;
+        }
+        self.complete({});
+        return;
+      }
+    }
+  }
+};
 }  // namespace lsplex::jsonrpc::detail
 
 namespace boost::asio {
@@ -134,58 +239,16 @@ struct is_match_condition<lsplex::jsonrpc::detail::parse_mandatory_headers>
 }  // namespace boost::asio
 
 namespace lsplex::jsonrpc {
-
-constexpr auto use_nothrow_awaitable = asio::as_tuple(asio::use_awaitable);
-
-template <typename Readable>
-[[nodiscard]] asio::awaitable<json::object> istream<Readable>::async_get() {
-  detail::parse_state state;
-again:
-  auto [ec, read] = co_await asio::async_read_until(
-      _in, _header_buf, detail::parse_mandatory_headers{&state},
-      use_nothrow_awaitable);
-  if (ec) {
-    if (ec == asio::error::misc_errors::not_found) {
-      // The too small buffer is guaranteed full after a 'not_found'.
-      // So consume something (else infloop).
-      _header_buf.consume(state.consume > 0 ? state.consume
-                                            : _header_buf.size());
-      state.consume = 0;
-      goto again;  // NOLINT
-    }
-    _header_buf.consume(_header_buf.size());
-    throw boost::system::system_error{ec};
-  }
-
-  _header_buf.consume(read);
-  _msg_buf.clear();
-  _msg_buf.resize(state.content_length);
-
-  auto sz = _header_buf.size();
-  auto from = asio::buffers_begin(_header_buf.data());
-  auto to
-      = from + static_cast<std::ptrdiff_t>(std::min(state.content_length, sz));
-
-  std::copy(from, to, _msg_buf.data());
-  _header_buf.consume(static_cast<size_t>(to - from));
-
-  if (sz < state.content_length)
-    co_await asio::async_read(
-        _in, asio::buffer(&_msg_buf[sz], state.content_length - sz),
-        asio::use_awaitable);
-
-  co_return json::parse(std::string_view{_msg_buf.data(), _msg_buf.size()})
-      .as_object();
+template <typename Readable> template <typename Token>
+[[nodiscard]] auto istream<Readable>::async_get(Token&& tok) {
+  return asio::async_compose<Token, void(boost::system::error_code,
+                                         boost::json::object)>(
+      detail::read_op{_in, _header_buf, _msg_buf, _state}, tok, _in);
 }
-
-template <typename Writable>
-asio::awaitable<void> ostream<Writable>::async_put(const json::object& o) {
-  const auto s = json::serialize(o);  // FIXME: find a more eff
-  std::stringstream header;
-  header << "Content-Length: " << s.size() << "\r\n\r\n";
-  co_await asio::async_write(_out, asio::buffer(header.str()),
-                             asio::use_awaitable);
-  co_await asio::async_write(_out, asio::buffer(s), asio::use_awaitable);
-  co_return;
+template <typename Writable> template <typename Token>
+[[nodiscard]] auto ostream<Writable>::async_put(const json::object& o,
+                                                Token&& tok) {
+  return asio::async_compose<Token, void(boost::system::error_code)>(
+      detail::write_op{_out, o}, tok, _out);
 }
 }  // namespace lsplex::jsonrpc
