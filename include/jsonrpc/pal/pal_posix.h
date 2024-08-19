@@ -130,11 +130,11 @@ public:
   std::string slurp() {
     std::vector<char> buffer(1024);
     std::string output;
-    ssize_t bytesRead;
+    ssize_t bytesRead = 0;;
 
     // Read the contents of the read end of the pipe
     while ((bytesRead = read(pipe_fd[0], buffer.data(), buffer.size())) > 0) {
-      output.append(buffer.data(), bytesRead);
+      output.append(buffer.data(), static_cast<size_t>(bytesRead));
     }
 
     return output;
