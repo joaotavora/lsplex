@@ -106,7 +106,7 @@ struct asio_stdout : writable_pipe {
               throw std::runtime_error(
                   detail::get_error_msg("WriteFile() failed"));
           }
-        } else if (ec == asio::error::eof) {
+        } else if (ec == asio::error::eof || ec == asio::error::broken_pipe) {
           // fmt::println(stderr, "child stdout closed");
           break;
         } else
