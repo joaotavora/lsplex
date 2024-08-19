@@ -8,7 +8,7 @@
 #include <boost/asio/writable_pipe.hpp>
 #include <boost/system/detail/error_code.hpp>
 #include <boost/winapi/file_management.hpp>
-#include <string_view>
+#include <thread>
 
 namespace lsplex::jsonrpc::pal {
 
@@ -42,23 +42,27 @@ struct readable_file : stream_file {
                     boost::asio::file_base::read_only} {}
 };
 
-struct asio_stdin : readable_pipe {
-  template <typename Executor> explicit asio_stdin(Executor&& ex)  // NOLINT
-      : readable_pipe{std::forward<Executor>(ex)} {
-    HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
-    if (h == INVALID_HANDLE_VALUE)
-      throw std::runtime_error(detail::get_error_msg("GetStdHandle() failed"));
+class asio_stdin : public readable_pipe {
+  writable_pipe _wp;
+  std::jthread _t;
 
-    writable_pipe wp{std::forward<Executor>(ex)};
+  writable_pipe init_writable_pipe() {
+    writable_pipe wp{this->get_executor()};
     connect_pipe(*this, wp);
+    return wp;
+  }
 
-    std::thread([h = h, wp = std::move(wp), this]() mutable {
+  std::jthread init_thread() {
+    return std::jthread([wp = std::move(_wp)]() mutable {
+      HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+      if (h == INVALID_HANDLE_VALUE)
+        throw std::runtime_error(
+            detail::get_error_msg("GetStdHandle() failed"));
       std::array<char, 1024> buffer{};
 
       for (;;) {
         DWORD bread = 0;
-        BOOL res
-          = ReadFile(h, buffer.data(), buffer.size(), &bread, nullptr);
+        BOOL res = ReadFile(h, buffer.data(), buffer.size(), &bread, nullptr);
         if (res && bread == 0) {
           wp.close();
           break;
@@ -73,28 +77,40 @@ struct asio_stdin : readable_pipe {
         }
         asio::write(wp, asio::buffer(buffer.data(), bread));
       }
-    }).detach();
+    });
   }
+
+public:
+  template <typename Executor> explicit asio_stdin(Executor&& ex)  // NOLINT
+      : readable_pipe{std::forward<Executor>(ex)},
+        _wp(init_writable_pipe()),
+        _t(init_thread()) {}
 };
 
-struct asio_stdout : writable_pipe {
-  template <typename Executor> explicit asio_stdout(Executor&& ex)  // NOLINT
-      : writable_pipe{std::forward<Executor>(ex)} {
-    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (h == INVALID_HANDLE_VALUE)
-      throw std::runtime_error(detail::get_error_msg("GetStdHandle() failed"));
+class asio_stdout : public writable_pipe {
+  readable_pipe _rp;
+  std::jthread _t;
 
-    readable_pipe rp{std::forward<Executor>(ex)};
+  readable_pipe init_readable_pipe() {
+    readable_pipe rp{this->get_executor()};
     connect_pipe(rp, *this);
+    return rp;
+  }
 
-    std::thread([h = h, rp = std::move(rp)]() mutable {
+  std::jthread init_thread() {
+    return std::jthread{[rp = std::move(_rp)]() mutable {
       std::array<char, 512> buffer{};
 
       boost::system::error_code ec;
 
+      HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+      if (h == INVALID_HANDLE_VALUE)
+        throw std::runtime_error(
+            detail::get_error_msg("GetStdHandle() failed"));
+
       for (;;) {
         auto bread
-          = rp.read_some(asio::buffer(buffer.data(), buffer.size()), ec);
+            = rp.read_some(asio::buffer(buffer.data(), buffer.size()), ec);
         if (!ec) {
           auto to_write = bread;
           while (to_write > 0) {
@@ -114,8 +130,14 @@ struct asio_stdout : writable_pipe {
           throw std::runtime_error(
               detail::get_error_msg("asio::read() failed"));
       }
-    }).detach();
+    }};
   }
+
+public:
+  template <typename Executor> explicit asio_stdout(Executor&& ex)  // NOLINT
+      : writable_pipe{std::forward<Executor>(ex)},
+        _rp{init_readable_pipe()},
+        _t{init_thread()} {}
 };
 
 }  // namespace lsplex::jsonrpc::pal
