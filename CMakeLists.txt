@@ -95,6 +95,7 @@ target_link_libraries(${PROJECT_NAME}_tests PRIVATE ${PROJECT_NAME}_lib
                       doctest::doctest)
 if(WIN32)
   add_executable(${PROJECT_NAME}_wincat test/wincat/wincat.cpp)
+  target_link_libraries(${PROJECT_NAME}_wincat PRIVATE fmt::fmt)
   set_property(TARGET ${PROJECT_NAME}_wincat PROPERTY OUTPUT_NAME wincat)
 endif()
 

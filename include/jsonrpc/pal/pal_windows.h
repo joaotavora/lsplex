@@ -8,6 +8,7 @@
 #include <boost/asio/writable_pipe.hpp>
 #include <boost/system/detail/error_code.hpp>
 #include <boost/winapi/file_management.hpp>
+#include <string_view>
 
 namespace lsplex::jsonrpc::pal {
 
@@ -93,7 +94,7 @@ struct asio_stdout : writable_pipe {
 
       for (;;) {
         auto bread
-            = rp.read_some(asio::buffer(buffer.data(), buffer.size()), ec);
+          = rp.read_some(asio::buffer(buffer.data(), buffer.size()), ec);
         if (!ec) {
           auto to_write = bread;
           while (to_write > 0) {
