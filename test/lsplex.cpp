@@ -4,10 +4,12 @@
 #include <lsplex/version.h>
 #include <windows.h>
 
+#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
+#include <sstream>
 
 TEST_CASE("Lsplex version") {
   static_assert(std::string_view(LSPLEX_VERSION) == std::string_view("1.0.0"));
@@ -76,13 +78,20 @@ private:
 };
 
 TEST_CASE("Loop a single JSON message fully through LsPlex") {
-  redirector r{"resources/justonemessage.txt"};
+
+  std::stringstream buffer;
+  {
+    std::ifstream file{"resources/twomessages.txt", std::ios::binary};
+    buffer << file.rdbuf();
+  }
+  redirector r{"resources/twomessages.txt"};
   std::thread th{[]{
     lsplex::LsContact contact{"./wincat.exe", {}};
     lsplex::LsPlex plex{{contact}};
-    fmt::println("Starting!");
     plex.start();
-    fmt::println("Done!");
   }};
   th.join();
+  auto slurped = r.slurp();
+  CHECK(slurped.size() == buffer.str().size());
+  CHECK(slurped == buffer.str());
 }
