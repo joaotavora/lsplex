@@ -94,10 +94,48 @@ public:
         _t{init_thread()} {}
 };
 
-struct asio_stdin : stream_descriptor {
-  template <typename Executor> explicit asio_stdin(Executor&& ex)  // NOLINT
-      : stream_descriptor{std::forward<Executor>(ex),
-                          fcntl(STDIN_FILENO, F_DUPFD_CLOEXEC)} {}
+class asio_stdin : public readable_pipe {
+  writable_pipe _wp;
+  detail::fd _file_fd;
+  std::jthread _t;
+
+  auto init_writable_pipe() {
+    writable_pipe wp{this->get_executor()};
+    connect_pipe(*this, wp);
+    return wp;
+  }
+
+  static auto init_fd() {
+    detail::fd fd{::dup(STDIN_FILENO)};
+    if (fd == -1)
+      throw std::runtime_error(detail::get_error_msg("::dup() failed"));
+    return fd;
+  }
+
+  auto init_thread() {
+    return std::jthread{[fd=std::move(_file_fd), wp=std::move(_wp), this]() mutable {
+      std::array<char, 1024> buffer{};
+      ssize_t bytes_read{};
+    retry:
+      while ((bytes_read = ::read(fd, buffer.data(), buffer.size())) > 0){
+        asio::write(wp, asio::buffer(buffer));
+      }
+
+      if (bytes_read == -1) {
+        if (errno == EAGAIN) goto retry;  // NOLINT
+        auto msg = detail::get_error_msg("::read() failed");
+        throw std::runtime_error(msg);
+      }
+      wp.close();
+    }};
+  }
+public:
+template <typename Executor>
+  explicit asio_stdin(Executor&& ex) // NOLINT
+      : readable_pipe{std::forward<Executor>(ex)},
+        _wp{init_writable_pipe()},
+        _file_fd{init_fd()},
+        _t{init_thread()} {}
 };
 
 struct asio_stdout : stream_descriptor {
