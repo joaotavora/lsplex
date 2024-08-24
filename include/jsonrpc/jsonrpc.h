@@ -1,10 +1,14 @@
 #pragma once
 
 #include <boost/asio.hpp>
+#include <boost/asio/buffers_iterator.hpp>
+#include <boost/asio/error.hpp>
+#include <boost/asio/readable_pipe.hpp>
 #include <boost/json.hpp>
 #include <memory_resource>
 #include <regex>
 #include <sstream>
+#include <utility>
 
 #include "lsplex/export.hpp"
 
@@ -12,15 +16,6 @@ namespace lsplex::jsonrpc {
 
 namespace json = boost::json;
 namespace asio = boost::asio;
-
-namespace detail {
-struct parse_state {
-  size_t content_length = 0;
-  size_t erledigt = 0;
-  bool at_eol{false};
-  size_t consume{0};
-};
-}  // namespace detail
 
 /** HTTP-like way to stream in JSON objects from a file descriptor.
  *
@@ -31,9 +26,7 @@ struct parse_state {
  */
 template <typename Readable> LSPLEX_EXPORT class istream {
   Readable _in;
-  asio::streambuf _header_buf{30};
-  std::vector<char> _msg_buf;
-  detail::parse_state _state;
+  asio::streambuf _buf{30};
 
 public:
   LSPLEX_EXPORT Readable& handle() { return _in; }
@@ -72,113 +65,89 @@ namespace lsplex::jsonrpc::detail {
 
 namespace asio = boost::asio;
 
-struct parse_mandatory_headers {
-  parse_state* pstate;
-  using It = asio::buffers_iterator<asio::streambuf::const_buffers_type>;
+template <typename Readable> class read_op {
+  Readable& _in;          // NOLINT
+  asio::streambuf& _buf;  // NOLINT
 
-  std::pair<It, bool> operator()(It begin, It end) const {
-    if (begin == end) return std::make_pair(begin, false);
-    if (*begin == '\n') begin++;
+  std::vector<char> _msg_buf{};  // NOLINT
+  enum { starting, parse_headers, reading_body } stage = starting;
+  using it_t = asio::buffers_iterator<asio::streambuf::const_buffers_type>;
+  size_t _content_length{0};
 
-    while (true) {
-      constexpr std::string_view eol{"\r\n"};
-      constexpr std::string_view magic{"Content-Length"};
+public:
+  read_op(Readable& in, asio::streambuf& buf) : _in{in}, _buf{buf} {}
 
-      It eol_probe{begin};
-      for (char c : eol) {
-        eol_probe = std::find(eol_probe, end, c);
-        if (eol_probe == end) {
-          pstate->at_eol = false;
-          return std::make_pair(begin, false);
-        }
-        pstate->consume = static_cast<size_t>(eol_probe - begin);
-        eol_probe++;
-      }
-
-      pstate->consume = static_cast<size_t>(eol_probe - begin);
-
-      if (pstate->content_length != 0  // If got mandatory header
-          && pstate->at_eol            // and last saw a complete line
-          && eol_probe - static_cast<ptrdiff_t>(eol.size())
-                 == begin  // and looking at another CRLF...
-      ) {
-        // ...we're about done!
-        return std::make_pair(eol_probe, true);
-      }
-      pstate->at_eol = true;
-
-      // Check if \r\n terminated line is header
-      std::regex header_re{R"(([^ ]+)\s*:\s*([^ ]+))"};
-      std::array<char, 512> buf{};
-      std::pmr::monotonic_buffer_resource resource{buf.data(), buf.size()};
-      std::pmr::polymorphic_allocator<std::sub_match<It>> alloc{&resource};
-      std::pmr::match_results<It> match{alloc};
-
-      if (std::regex_match(begin, eol_probe, match, header_re)) {
-        if (std::equal(match[1].first, match[1].second, magic.begin())) {
-          for (It cp = match[2].first;
-               cp != match[2].second && static_cast<bool>(isdigit(*cp)); ++cp)
-            pstate->content_length
-                = pstate->content_length * 10 + static_cast<size_t>(*cp - '0');
-        }
-      }
-      begin = eol_probe;
-    }
-  }
-};
-
-template <typename Readable> struct read_op {
-  Readable& in;                 // NOLINT
-  asio::streambuf& header_buf;  // NOLINT
-  std::vector<char>& msg_buf;   // NOLINT
-  detail::parse_state& state;   // NOLINT
-  enum { starting, reading_header, reading_body } stage = starting;
-  detail::parse_mandatory_headers parser{};
-
-  template <typename Self> void operator()(Self& self,
-                                           boost::system::error_code ec = {},
-                                           std::size_t bread = 0) {
+  // NOLINTNEXTLINE(*-cognitive-complexity)
+  template <typename Self> void operator()([[maybe_unused]] Self& self,
+                                           [[maybe_unused]] boost::system::error_code ec = {},
+                                           [[maybe_unused]] std::size_t bread = 0) {
     switch (stage) {
       case starting: {
-        state = {};
+        stage = parse_headers;
       again:
-        stage = reading_header;
-        asio::async_read_until(in, header_buf,
-                               detail::parse_mandatory_headers{&state},
-                               std::move(self));
+        _in.async_read_some(_buf, std::move(self));
         return;
       }
-      case reading_header: {
-        if (ec) {
-          if (ec == asio::error::misc_errors::not_found) {
-            header_buf.consume(state.consume > 0 ? state.consume
-                                                 : header_buf.size());
-            state.consume = 0;
+      case parse_headers: {
+        if (bread == 0) {
+          self.complete(asio::error::misc_errors::eof, {});
+          return;
+        }
+        for (;;) {
+          auto beg = asio::buffers_begin(_buf.data());
+          auto end = asio::buffers_end(_buf.data());
+          constexpr std::string_view searcher{"\r\n"};
+          auto crlf = std::search(beg, end, searcher.begin(), searcher.end());
+
+          if (crlf == end) {
+            // no crlf in sight, need to get more data, possibly
+            // emptying the buffer to make space for it.
+            if (_buf.size() == _buf.max_size()) _buf.consume(_buf.size());
             goto again;  // NOLINT
           }
-          header_buf.consume(header_buf.size());
-          self.complete(ec, {});
-          return;
-        }
-        header_buf.consume(bread);
-        msg_buf.clear();
-        msg_buf.resize(state.content_length);
-        auto sz = header_buf.size();
-        auto from = asio::buffers_begin(header_buf.data());
-        auto to
-            = from
-              + static_cast<std::ptrdiff_t>(std::min(state.content_length, sz));
-        std::copy(from, to, msg_buf.data());
-        header_buf.consume(static_cast<size_t>(to - from));
 
-        if (sz < state.content_length) {
+          if (_content_length != 0 && crlf == beg) break;
+
+
+          std::regex header_re{R"(([^ ]+)\s*:\s*([^ ]+))"};
+          std::array<char, 512> buf{};
+          std::pmr::monotonic_buffer_resource resource{buf.data(), buf.size()};
+          std::pmr::polymorphic_allocator<std::sub_match<it_t>> alloc{
+              &resource};
+          std::pmr::match_results<it_t> match{alloc};
+
+          constexpr std::string_view magic{"Content-Length"};
+          size_t content_length = 0;
+          if (std::regex_match(beg, crlf, match, header_re)) {
+            if (std::equal(match[1].first, match[1].second, magic.begin())) {
+              for (auto cp = match[2].first;
+                   cp != match[2].second && static_cast<bool>(isdigit(*cp));
+                   ++cp)
+                content_length
+                    = content_length * 10 + static_cast<size_t>(*cp - '0');
+            }
+          }
+          _buf.consume(static_cast<size_t>(crlf - beg) + searcher.size());
+        }
+
+        // We're now officially reading the message body, but there
+        // may be some of the message (or all of it) in _buf.
+        stage = reading_body;
+        auto sz = _buf.size();
+        auto from = asio::buffers_begin(_buf.data());
+        auto to
+            = from + static_cast<std::ptrdiff_t>(std::min(_content_length, sz));
+        std::copy(from, to, _msg_buf.data());
+        _buf.consume(static_cast<size_t>(to - from));
+
+        if (sz < _content_length) {
           stage = reading_body;
-          asio::async_read(
-              in, asio::buffer(&msg_buf[sz], state.content_length - sz),
-              std::move(self));
+          asio::async_read(_in,
+                           asio::buffer(&_msg_buf[sz], _content_length - sz),
+                           std::move(self));
           return;
         }
-        goto done;  // NOLINT
+        goto done; // NOLINT
       }
       case reading_body: {
         if (ec) {
@@ -187,7 +156,7 @@ template <typename Readable> struct read_op {
         }
       done:
         self.complete(
-            {}, json::parse(std::string_view{msg_buf.data(), msg_buf.size()})
+            {}, json::parse(std::string_view{_msg_buf.data(), _msg_buf.size()})
                     .as_object());
       }
     }
@@ -235,18 +204,12 @@ template <typename Writable> struct write_op {
 };
 }  // namespace lsplex::jsonrpc::detail
 
-namespace boost::asio {
-template <>
-struct is_match_condition<lsplex::jsonrpc::detail::parse_mandatory_headers>
-    : public boost::true_type {};
-}  // namespace boost::asio
-
 namespace lsplex::jsonrpc {
 template <typename Readable> template <typename Token>
 [[nodiscard]] auto istream<Readable>::async_get(Token&& tok) {
   return asio::async_compose<Token, void(boost::system::error_code,
                                          boost::json::object)>(
-      detail::read_op{_in, _header_buf, _msg_buf, _state}, tok, _in);
+      detail::read_op{_in, _buf}, tok, _in);
 }
 template <typename Writable> template <typename Token>
 [[nodiscard]] auto ostream<Writable>::async_put(const json::object& o,
