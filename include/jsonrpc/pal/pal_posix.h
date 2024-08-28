@@ -118,7 +118,7 @@ class asio_stdin : public readable_pipe {
       ssize_t bytes_read{};
     retry:
       while ((bytes_read = ::read(fd, buffer.data(), buffer.size())) > 0){
-        asio::write(wp, asio::buffer(buffer));
+        asio::write(wp, asio::buffer(buffer, static_cast<size_t>(bytes_read)));
       }
 
       if (bytes_read == -1) {
