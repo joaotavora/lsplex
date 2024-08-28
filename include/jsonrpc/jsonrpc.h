@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fmt/core.h>
 #include <boost/asio.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/error.hpp>
@@ -11,34 +12,13 @@
 #include <utility>
 
 #include "lsplex/export.hpp"
+#include "jsonrpc/circular_buffer.h"
 
 namespace lsplex::jsonrpc {
 
 namespace json = boost::json;
 namespace asio = boost::asio;
-
-namespace detail {
-class headerbuf {
-  std::array<char, 50> _data{};
-public:
-  using iterator = decltype(_data)::iterator;
-private:
-  iterator _a{_data.begin()};
-  iterator _b{_data.begin()};
-
-public:
-  char* data() { return _a; }
-  auto begin() { return _a; }
-  auto end() { return _b; }
-  [[nodiscard]] size_t capacity() const {
-    return static_cast<size_t>(_data.end() - _b);
-  }
-  [[nodiscard]] size_t size() const { return static_cast<size_t>(_b - _a); }
-  void clear() { _a = _b = _data.begin(); }
-  void forget(size_t n) { _a += n; }
-  void grow(size_t n) { _b += n; }
-};
-}  // namespace detail
+using headerbuf_t = circular_buffer<char, 50>;
 
 /** HTTP-like way to stream in JSON objects from a file descriptor.
  *
@@ -49,7 +29,7 @@ public:
  */
 template <typename Readable> LSPLEX_EXPORT class istream {
   Readable _in;
-  detail::headerbuf _buf;
+  headerbuf_t _buf;
 
 public:
   LSPLEX_EXPORT Readable& handle() { return _in; }
@@ -90,15 +70,15 @@ namespace asio = boost::asio;
 
 template <typename Readable> class read_op {
   Readable& _in;            // NOLINT
-  detail::headerbuf& _buf;  // NOLINT
+  headerbuf_t& _buf;  // NOLINT
 
   std::vector<char> _msg_buf{};  // NOLINT
   enum { starting, parse_headers, reading_body } stage = starting;
-  using it_t = detail::headerbuf::iterator;
+  using it_t = headerbuf_t::iterator;
   size_t _content_length{0};
 
 public:
-  read_op(Readable& in, detail::headerbuf& buf) : _in{in}, _buf{buf} {}
+  read_op(Readable& in, headerbuf_t& buf) : _in{in}, _buf{buf} {}
 
   template <typename Self>
   // NOLINTBEGIN(*-qualified-auto)
@@ -110,8 +90,7 @@ public:
       case starting: {
         stage = parse_headers;
       again:
-        _in.async_read_some(asio::buffer(_buf.end(), _buf.capacity()),
-                            std::move(self));
+        _in.async_read_some(_buf.buffer(), std::move(self));
         return;
       }
       case parse_headers: {
@@ -128,12 +107,12 @@ public:
           if (crlf == end) {
             // no crlf in sight, need to get more data, possibly
             // emptying the buffer to make space for it.
-            if (_buf.capacity() == 0) _buf.clear();
+            if (_buf.full() == 0) _buf.clear();
             goto again;  // NOLINT
           }
 
           if (_content_length != 0 && crlf == beg) {
-            _buf.forget(searcher.size());
+            _buf.consume(searcher.size());
             break;
           }
 
@@ -156,7 +135,7 @@ public:
               _content_length = content_length;
             }
           }
-          _buf.forget(static_cast<size_t>(crlf - beg) + searcher.size());
+          _buf.consume(static_cast<size_t>(crlf - beg) + searcher.size());
         }
 
         // We're now officially reading the message body, but there
@@ -168,7 +147,7 @@ public:
           = static_cast<it_t>(from) + static_cast<std::ptrdiff_t>(std::min(_content_length, sz));
         _msg_buf.resize(_content_length);
         std::copy(from, to, _msg_buf.data());
-        _buf.forget(static_cast<size_t>(to - from));
+        _buf.consume(static_cast<size_t>(to - from));
 
         if (sz < _content_length) {
           stage = reading_body;
