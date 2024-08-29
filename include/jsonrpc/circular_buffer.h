@@ -19,6 +19,7 @@ public:
     std::conditional_t<is_const, const circular_buffer*, circular_buffer*>
         _buffer{nullptr};
     std::size_t _index{0};
+    [[nodiscard]] constexpr bool isend() const {return _index == N;}
 
   public:
     using iterator_category = std::random_access_iterator_tag;
@@ -63,19 +64,21 @@ public:
 #endif
       auto& buf = *lhs._buffer;
       constexpr auto S = static_cast<difference_type>(N);
-      auto lshi = (lhs._index == N) ? buf._b : lhs._index;
-      auto rshi = (rhs._index == N) ? buf._b : rhs._index;
-      auto diff = static_cast<difference_type>(lshi - rshi);
+      auto lhsi = lhs.isend() ? buf._b : lhs._index;
+      auto rhsi = rhs.isend() ? buf._b : rhs._index;
+      auto diff = static_cast<difference_type>(lhsi - rhsi);
 
-      if (lshi == rshi && buf.full()) return N;
+      auto edge = lhsi == rhsi && buf.full();
+      if (edge and lhs.isend()) return S;
+      if (edge and rhs.isend()) return -S;
 
-      if (lshi >= buf._a) {
-        if (rshi >= buf._a) {
+      if (lhsi >= buf._a) {
+        if (rhsi >= buf._a) {
           return diff;
         } else {  // NOLINT
           return diff - S;
         }
-      } else if (rshi >= buf._a) {
+      } else if (rhsi >= buf._a) {
         return diff + S;
       } else {
         return diff;
@@ -113,7 +116,7 @@ public:
   }
   constexpr iterator end() { return iterator(*this, N); }
   [[nodiscard]] constexpr const_iterator end() const {
-    return const_iterator(*this, N);  // FIXME: this is wrong.
+    return const_iterator(*this, N);
   }
 
   [[nodiscard]] size_t constexpr size() const {
@@ -199,7 +202,7 @@ namespace {  // NOLINT
   static_assert(buf4.full());
   static_assert(buf4.size() == 50);
   static_assert(buf4.end() - buf4.begin() == 50);
-  // static_assert(buf4.begin() - buf4.end() == -50);
+  static_assert(buf4.begin() - buf4.end() == -50);
 
   constexpr auto buf5 = []() {
     circular_buffer<char, 50> b;
@@ -212,7 +215,7 @@ namespace {  // NOLINT
   static_assert(buf5.full());
   static_assert(buf5.size() == 50);
   static_assert(buf5.end() - buf5.begin() == 50);
-  // static_assert(buf5.begin() - buf5.end() == -50);
+  static_assert(buf5.begin() - buf5.end() == -50);
 
   constexpr auto n = []() {
     circular_buffer<char, 50> b;
@@ -236,8 +239,6 @@ namespace {  // NOLINT
     beg += -22;
     return *beg;
   }();
-
   static_assert(ret6 == 't');
-
 }  // namespace
 }  // namespace lsplex::jsonrpc

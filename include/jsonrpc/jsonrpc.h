@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/core.h>
+
 #include <boost/asio.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/error.hpp>
@@ -11,8 +12,8 @@
 #include <sstream>
 #include <utility>
 
-#include "lsplex/export.hpp"
 #include "jsonrpc/circular_buffer.h"
+#include "lsplex/export.hpp"
 
 namespace lsplex::jsonrpc {
 
@@ -69,7 +70,7 @@ namespace lsplex::jsonrpc::detail {
 namespace asio = boost::asio;
 
 template <typename Readable> class read_op {
-  Readable& _in;            // NOLINT
+  Readable& _in;      // NOLINT
   headerbuf_t& _buf;  // NOLINT
 
   std::vector<char> _msg_buf{};  // NOLINT
@@ -107,7 +108,7 @@ public:
           if (crlf == end) {
             // no crlf in sight, need to get more data, possibly
             // emptying the buffer to make space for it.
-            if (_buf.full() == 0) _buf.clear();
+            if (_buf.full()) _buf.clear();
             goto again;  // NOLINT
           }
 
@@ -116,7 +117,7 @@ public:
             break;
           }
 
-          std::regex header_re{R"(([^ ]+)\s*:\s*([^ ]+))"};
+          std::regex header_re{R"(\n?([^ ]+)\s*:\s*([^ ]+))"};
           std::array<char, 512> buf{};
           std::pmr::monotonic_buffer_resource resource{buf.data(), buf.size()};
           std::pmr::polymorphic_allocator<std::sub_match<it_t>> alloc{
@@ -131,7 +132,7 @@ public:
                    cp != match[2].second && static_cast<bool>(isdigit(*cp));
                    ++cp)
                 content_length
-                  = content_length * 10 + static_cast<size_t>(*cp - '0');
+                    = content_length * 10 + static_cast<size_t>(*cp - '0');
               _content_length = content_length;
             }
           }
@@ -143,8 +144,8 @@ public:
         stage = reading_body;
         auto sz = _buf.size();
         auto from = _buf.begin();
-        auto to
-          = static_cast<it_t>(from) + static_cast<std::ptrdiff_t>(std::min(_content_length, sz));
+        auto to = static_cast<it_t>(from)
+                  + static_cast<std::ptrdiff_t>(std::min(_content_length, sz));
         _msg_buf.resize(_content_length);
         std::copy(from, to, _msg_buf.data());
         _buf.consume(static_cast<size_t>(to - from));
