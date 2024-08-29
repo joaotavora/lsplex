@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <boost/asio/buffer.hpp>
 #include <cassert>
@@ -42,13 +43,17 @@ public:
     constexpr pointer operator->() { return &(_buffer->_data[_index]); }
 
     constexpr t_iterator& operator+=(ssize_t n) {
-      _index = static_cast<size_t>(static_cast<ssize_t>(_index) + n) % N;
-      if (_index == _buffer->_b) _index = N;
+      auto S = static_cast<ssize_t>(N);
+      ssize_t tmp = (static_cast<ssize_t>(_index) + n) % S;
+      if (tmp < 0) tmp += S;
+      _index = static_cast<size_t>(tmp);
+      if (n > 0 && _index == _buffer->_b) _index = N;
       return *this;
     }
-    constexpr t_iterator& operator+(ssize_t rhs) {
-      *this += rhs;
-      return *this;
+    constexpr t_iterator operator+(ssize_t rhs) {
+      auto tmp = *this;
+      tmp += rhs;
+      return tmp;
     }
 
     constexpr difference_type friend operator-(const t_iterator& lhs,
@@ -219,6 +224,20 @@ namespace {  // NOLINT
     return count;
   }();
   static_assert(n == 30);
+
+  constexpr auto ret6 = []() {
+    circular_buffer<char, 50> b;
+    b.grow(30);
+    b.consume(30);
+    std::string_view sv{"the rain in spaiN stays"};
+    std::copy(sv.begin(), sv.end(), b.begin());
+    auto beg = b.begin();
+    beg += 22;
+    beg += -22;
+    return *beg;
+  }();
+
+  static_assert(ret6 == 't');
 
 }  // namespace
 }  // namespace lsplex::jsonrpc
