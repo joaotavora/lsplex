@@ -140,8 +140,7 @@ template <typename Executor>
 
 struct asio_stdout : stream_descriptor {
   template <typename Executor> explicit asio_stdout(Executor&& ex)  // NOLINT
-      : stream_descriptor{std::forward<Executor>(ex),
-                          fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC)} {}
+      : stream_descriptor{std::forward<Executor>(ex), ::dup(STDOUT_FILENO)} {}
 };
 
 class redirector {
