@@ -3,6 +3,7 @@
 #include <lsplex/lsplex.h>
 #include <lsplex/version.h>
 #include <jsonrpc/pal/pal.h>
+#include <unistd.h>
 
 #include <fstream>
 #include <string>
@@ -31,6 +32,7 @@ TEST_CASE("Loop some well behaved messages fully through LsPlex") {
 #endif
     lsplex::LsPlex plex{{contact}};
     plex.start();
+    ::close(STDOUT_FILENO);
   }};
   th.join();
   auto slurped = r.slurp();
