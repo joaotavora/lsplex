@@ -19,7 +19,10 @@ public:
     std::conditional_t<is_const, const circular_buffer*, circular_buffer*>
         _buffer{nullptr};
     std::size_t _index{0};
+    [[nodiscard]] constexpr std::size_t buf_a() const { return _buffer->_a;}
+    [[nodiscard]] constexpr std::size_t buf_b() const { return _buffer->_b;}
     [[nodiscard]] constexpr bool isend() const {return _index == N;}
+    
 
   public:
     using iterator_category = std::random_access_iterator_tag;
@@ -64,21 +67,21 @@ public:
 #endif
       auto& buf = *lhs._buffer;
       constexpr auto S = static_cast<difference_type>(N);
-      auto lhsi = lhs.isend() ? buf._b : lhs._index;
-      auto rhsi = rhs.isend() ? buf._b : rhs._index;
+      auto lhsi = lhs.isend() ? lhs.buf_b() : lhs._index;
+      auto rhsi = rhs.isend() ? lhs.buf_b() : rhs._index;
       auto diff = static_cast<difference_type>(lhsi - rhsi);
 
       auto edge = lhsi == rhsi && buf.full();
       if (edge and lhs.isend()) return S;
       if (edge and rhs.isend()) return -S;
 
-      if (lhsi >= buf._a) {
-        if (rhsi >= buf._a) {
+      if (lhsi >= lhs.buf_a()) {
+        if (rhsi >= lhs.buf_a()) {
           return diff;
         } else {  // NOLINT
           return diff - S;
         }
-      } else if (rhsi >= buf._a) {
+      } else if (rhsi >= lhs.buf_a()) {
         return diff + S;
       } else {
         return diff;
