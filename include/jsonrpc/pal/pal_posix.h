@@ -55,7 +55,7 @@ namespace detail {
 class readable_file : public readable_pipe {
   writable_pipe _wp;
   detail::fd _file_fd;
-  std::jthread _t;
+  std::thread _t;
 
   auto init_writable_pipe() {
     writable_pipe wp{this->get_executor()};
@@ -71,7 +71,7 @@ class readable_file : public readable_pipe {
   }
 
   auto init_thread() {
-    return std::jthread{[fd=std::move(_file_fd), wp=std::move(_wp)]() mutable {
+    return std::thread{[fd=std::move(_file_fd), wp=std::move(_wp)]() mutable {
       std::array<char, 1024> buffer{};
       ssize_t bytes_read{};
     retry:
@@ -86,18 +86,26 @@ class readable_file : public readable_pipe {
     }};
   }
 public:
+  readable_file(const readable_file&) = delete;
+  readable_file(readable_file&&) noexcept = default;
+  readable_file& operator=(const readable_file&) = delete;
+  readable_file& operator=(readable_file&&) noexcept = default;
   template <typename Executor>
   explicit readable_file(Executor&& ex, const std::string& path)
       : readable_pipe{std::forward<Executor>(ex)},
         _wp{init_writable_pipe()},
         _file_fd{init_fd(path)},
         _t{init_thread()} {}
+
+  ~readable_file() {
+    if (_t.joinable()) _t.join();
+  }
 };
 
 class asio_stdin : public readable_pipe {
   writable_pipe _wp;
   detail::fd _file_fd;
-  std::jthread _t;
+  std::thread _t;
 
   auto init_writable_pipe() {
     writable_pipe wp{this->get_executor()};
@@ -113,7 +121,7 @@ class asio_stdin : public readable_pipe {
   }
 
   auto init_thread() {
-    return std::jthread{[fd=std::move(_file_fd), wp=std::move(_wp), this]() mutable {
+    return std::thread{[fd=std::move(_file_fd), wp=std::move(_wp)]() mutable {
       std::array<char, 1024> buffer{};
       ssize_t bytes_read{};
     retry:
@@ -130,12 +138,18 @@ class asio_stdin : public readable_pipe {
     }};
   }
 public:
-template <typename Executor>
-  explicit asio_stdin(Executor&& ex) // NOLINT
+  asio_stdin(const asio_stdin&) = delete;
+  asio_stdin(asio_stdin&&) noexcept = default;
+  asio_stdin& operator=(const asio_stdin&) = delete;
+  asio_stdin& operator=(asio_stdin&&) noexcept = default;
+  template <typename Executor> explicit asio_stdin(Executor&& ex)  // NOLINT
       : readable_pipe{std::forward<Executor>(ex)},
         _wp{init_writable_pipe()},
         _file_fd{init_fd()},
         _t{init_thread()} {}
+  ~asio_stdin() {
+    if (_t.joinable()) _t.join();
+  }
 };
 
 struct asio_stdout : stream_descriptor {
