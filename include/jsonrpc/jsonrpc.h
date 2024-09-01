@@ -174,23 +174,25 @@ public:
   // NOLINTEND(*-qualified-auto)
 };
 
-template <typename Writable> struct write_op {
-  Writable& out;          // NOLINT
-  const json::object& o;  // NOLINT
-  std::string& out_buf;   // NOLINT
-
+template <typename Writable> class write_op {
+  Writable& _out;          // NOLINT
+  const json::object& _o;  // NOLINT
+  std::string& _out_buf;   // NOLINT
   enum { starting, writing_header, writing_body } stage = starting;
+public:
+  write_op(Writable& out, const json::object& o, std::string& out_buf) :
+    _out{out}, _o{o}, _out_buf{out_buf} {}
 
   template <typename Self>
   void operator()(Self& self, boost::system::error_code ec = {},
                   [[maybe_unused]] size_t written = 0) {
     switch (stage) {
       case starting: {
-        out_buf = json::serialize(o);
+        _out_buf = json::serialize(_o);
         std::stringstream header;
-        header << "Content-Length: " << out_buf.size() << "\r\n\r\n";
+        header << "Content-Length: " << _out_buf.size() << "\r\n\r\n";
         stage = writing_header;
-        asio::async_write(out, asio::buffer(header.str()), std::move(self));
+        asio::async_write(_out, asio::buffer(header.str()), std::move(self));
         return;
       }
       case writing_header: {
@@ -199,7 +201,7 @@ template <typename Writable> struct write_op {
           return;
         }
         stage = writing_body;
-        asio::async_write(out, asio::buffer(out_buf), std::move(self));
+        asio::async_write(_out, asio::buffer(_out_buf), std::move(self));
         return;
       }
       case writing_body: {
