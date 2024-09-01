@@ -54,9 +54,17 @@ public:
       if (n > 0 && _index == _buffer->_b) _index = N;
       return *this;
     }
+    constexpr t_iterator& operator-=(ssize_t n) {
+      return *this += (-n);
+    }
     constexpr t_iterator operator+(ssize_t rhs) {
       auto tmp = *this;
       tmp += rhs;
+      return tmp;
+    }
+    constexpr t_iterator operator-(ssize_t rhs) {
+      auto tmp = *this;
+      tmp -= rhs;
       return tmp;
     }
 
@@ -242,6 +250,20 @@ namespace {  // NOLINT
     beg += -22;
     return *beg;
   }();
-  static_assert(ret6 == 't');
+static_assert(ret6 == 't');
+
+constexpr auto ret7 = []() {
+    circular_buffer<char, 50> b;
+    b.grow(30);
+    b.consume(30);
+    std::string_view sv{"the rain in spaiN stays"};
+    std::copy(sv.begin(), sv.end(), b.begin());
+    auto beg = b.begin();
+    beg += 22;
+    beg -= 20;
+    beg = beg - 2;
+    return *beg;
+  }();
+  static_assert(ret7 == 't');
 }  // namespace
 }  // namespace lsplex::jsonrpc
