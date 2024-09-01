@@ -69,7 +69,7 @@ target_link_libraries(${PROJECT_NAME}_exe PRIVATE ${PROJECT_NAME}_lib fmt::fmt
 
 find_package(cxxopts REQUIRED)
 find_package(fmt REQUIRED)
-find_package(Boost REQUIRED COMPONENTS json filesystem)
+find_package(Boost 1.85 REQUIRED COMPONENTS json filesystem)
 
 if(NOT CMAKE_SKIP_INSTALL_RULES)
   include(cmake/exe-install.cmake)
