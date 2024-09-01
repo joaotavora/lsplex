@@ -173,7 +173,7 @@ public:
     if (dup2(file, STDIN_FILENO) == -1)
       throw std::runtime_error("Failed to redirect stdin");
 
-    if (pipe2(pipe_fd.data(), O_CLOEXEC) == -1)
+    if (pipe(pipe_fd.data()) == -1)
       throw std::runtime_error("Failed to create pipe");
 
     if (dup2(pipe_fd[1], STDOUT_FILENO) == -1)
