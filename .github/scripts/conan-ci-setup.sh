@@ -26,6 +26,6 @@ else
   mv "${profile}.1" "$profile"
 fi
 
-conan remove * #  ensure local cache is pristine
+conan remove -c * #  ensure local cache is pristine
 conan install . --settings build_type=Release --build=missing
 
